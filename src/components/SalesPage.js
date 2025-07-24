@@ -186,89 +186,89 @@ const SalesPage = () => {
   return (
     <div className="space-y-8 max-w-[100vw] overflow-x-auto bg-white">
       <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-        <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-          <div className="space-y-2">
+        <div className="space-y-6">
+          <div>
             <h1 className="text-3xl lg:text-4xl font-bold text-slate-800 tracking-tight">
               Sales Dashboard
             </h1>
-            <p className="text-slate-600 text-lg max-w-2xl leading-relaxed">
+            <p className="text-slate-600 text-lg max-w-2xl leading-relaxed mt-2">
               Monitor your sales performance, manage transactions, and track your business growth with our comprehensive analytics platform.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
-            <button
-              onClick={() => {
-                setEditingSale(null);
-                setShowForm(true);
-              }}
-              className="group bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-300 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-blue-100/50 hover:-translate-y-1"
-            >
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-3 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition-colors">
-                  <Plus className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800 text-sm">Add Sale</div>
-                  <div className="text-xs text-slate-500 mt-1">New Transaction</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowClientForm(true)}
-              className="group bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-300 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-100/50 hover:-translate-y-1"
-            >
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-3 bg-emerald-100 rounded-xl group-hover:bg-emerald-200 transition-colors">
-                  <Users className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800 text-sm">Clients</div>
-                  <div className="text-xs text-slate-500 mt-1">Manage Customers</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowProductForm(true)}
-              className="group bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-300 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-purple-100/50 hover:-translate-y-1"
-            >
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-3 bg-purple-100 rounded-xl group-hover:bg-purple-200 transition-colors">
-                  <Package className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800 text-sm">Products</div>
-                  <div className="text-xs text-slate-500 mt-1">Inventory Items</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowSupplyForm(true)}
-              className="group bg-white hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-300 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-orange-100/50 hover:-translate-y-1"
-            >
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-3 bg-orange-100 rounded-xl group-hover:bg-orange-200 transition-colors">
-                  <Truck className="w-6 h-6 text-orange-600" />
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold text-slate-800 text-sm">Supplies</div>
-                  <div className="text-xs text-slate-500 mt-1">Stock Management</div>
-                </div>
-              </div>
-            </button>
-          </div>
+          <DateFilter
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            showDateFilter={showDateFilter}
+            setShowDateFilter={setShowDateFilter}
+          />
         </div>
       </div>
 
-      <DateFilter
-        dateFilter={dateFilter}
-        setDateFilter={setDateFilter}
-        showDateFilter={showDateFilter}
-        setShowDateFilter={setShowDateFilter}
-      />
+      {/* Three Simple Circles */}
+      <div className="flex justify-center gap-6">
+        <button
+          onClick={() => setShowClientForm(true)}
+          className="w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+        >
+          <Users className="w-8 h-8 text-white" />
+        </button>
+        
+        <button
+          onClick={() => setShowProductForm(true)}
+          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+        >
+          <Package className="w-8 h-8 text-white" />
+        </button>
+        
+        <button
+          onClick={() => setShowSupplyForm(true)}
+          className="w-16 h-16 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+        >
+          <Truck className="w-8 h-8 text-white" />
+        </button>
+      </div>
+
+      {/* Sales Table - Prioritized at top */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions</h2>
+              <p className="text-slate-600">Complete record of all your sales activities</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Live Data
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <SalesTable
+            sales={sales}
+            products={products}
+            globalFilter={globalFilter}
+            setGlobalFilter={setGlobalFilter}
+            dateFilter={dateFilter}
+            setEditingSale={setEditingSale}
+            setShowForm={setShowForm}
+          />
+        </div>
+      </div>
+
+      {sales && sales.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">Performance Analytics</h2>
+            <p className="text-slate-600">Real-time insights into your sales performance and trends</p>
+          </div>
+          <div className="p-6">
+            <SalesAnalytics sales={sales} products={products} dateFilter={dateFilter} />
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100">
@@ -383,45 +383,16 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {sales && sales.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Performance Analytics</h2>
-            <p className="text-slate-600">Real-time insights into your sales performance and trends</p>
-          </div>
-          <div className="p-6">
-            <SalesAnalytics sales={sales} products={products} dateFilter={dateFilter} />
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions</h2>
-              <p className="text-slate-600">Complete record of all your sales activities</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Live Data
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <SalesTable
-            sales={sales}
-            products={products}
-            globalFilter={globalFilter}
-            setGlobalFilter={setGlobalFilter}
-            dateFilter={dateFilter}
-            setEditingSale={setEditingSale}
-            setShowForm={setShowForm}
-          />
-        </div>
-      </div>
+      {/* Floating Add Sale Button */}
+      <button
+        onClick={() => {
+          setEditingSale(null);
+          setShowForm(true);
+        }}
+        className="fixed bottom-20 sm:bottom-24 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-[100]"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
