@@ -310,45 +310,7 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
   };
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-green-800 font-medium">Total Sales:</span>
-              <span className="text-green-800 font-bold text-xl">
-                UGX {totals.totalSales.toLocaleString()}
-              </span>
-            </div>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-blue-800 font-medium">Amount Paid:</span>
-              <span className="text-blue-800 font-bold text-xl">
-                UGX {totals.totalPaid.toLocaleString()}
-              </span>
-            </div>
-          </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-orange-800 font-medium">Outstanding:</span>
-              <span className="text-orange-800 font-bold text-xl">
-                UGX {totals.outstandingBalance.toLocaleString()}
-              </span>
-            </div>
-          </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-purple-800 font-medium">Total Items:</span>
-              <span className="text-purple-800 font-bold text-xl">
-                {totals.totalQuantity.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-6 w-full max-w-none">
       <div className="relative w-full sm:w-80">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
@@ -366,9 +328,9 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm w-full">
         <div className="p-6 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Sales Records ({filteredSales.length})
@@ -380,47 +342,10 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
               )}
             </div>
           </div>
-          
-          {filteredSales.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-green-800 font-medium">Total Sales:</span>
-                  <span className="text-green-800 font-bold text-lg">
-                    UGX {totals.totalSales.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-800 font-medium">Amount Paid:</span>
-                  <span className="text-blue-800 font-bold text-lg">
-                    UGX {totals.totalPaid.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-orange-800 font-medium">Outstanding:</span>
-                  <span className="text-orange-800 font-bold text-lg">
-                    UGX {totals.outstandingBalance.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-purple-800 font-medium">Total Items:</span>
-                  <span className="text-purple-800 font-bold text-lg">
-                    {totals.totalQuantity.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50/50">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
@@ -462,6 +387,42 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
                   ))}
                 </tr>
               ))}
+              
+              {/* Totals Row */}
+              {filteredSales.length > 0 && (
+                <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    TOTALS
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-center text-gray-900">
+                    {totals.totalQuantity.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-orange-700">
+                    -UGX {totals.totalDiscount.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-700">
+                    UGX {totals.totalSales.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700">
+                    UGX {totals.totalPaid.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -493,82 +454,43 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
 
         {filteredSales.length > 0 && (
           <div className="p-6 border-t border-gray-100">
-            <div className="flex flex-col gap-4">
-              {/* Bottom Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-green-800 font-medium">Total Sales:</span>
-                    <span className="text-green-800 font-bold text-lg">
-                      UGX {totals.totalSales.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-blue-800 font-medium">Amount Paid:</span>
-                    <span className="text-blue-800 font-bold text-lg">
-                      UGX {totals.totalPaid.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-orange-800 font-medium">Outstanding:</span>
-                    <span className="text-orange-800 font-bold text-lg">
-                      UGX {totals.outstandingBalance.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-purple-800 font-medium">Total Items:</span>
-                    <span className="text-purple-800 font-bold text-lg">
-                      {totals.totalQuantity.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Show</span>
+                <select
+                  value={table.getState().pagination.pageSize}
+                  onChange={e => {
+                    table.setPageSize(Number(e.target.value))
+                  }}
+                  className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
+                >
+                  {[25, 50, 100].map(pageSize => (
+                    <option key={pageSize} value={pageSize}>
+                      {pageSize}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-600">entries</span>
               </div>
               
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Show</span>
-                  <select
-                    value={table.getState().pagination.pageSize}
-                    onChange={e => {
-                      table.setPageSize(Number(e.target.value))
-                    }}
-                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
-                  >
-                    {[25, 50, 100].map(pageSize => (
-                      <option key={pageSize} value={pageSize}>
-                        {pageSize}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-sm text-gray-600">entries</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-gray-600">
-                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-                  </span>
-                  <button
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Next
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                </span>
+                <button
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
               </div>
             </div>
           </div>
