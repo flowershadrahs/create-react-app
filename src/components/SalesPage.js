@@ -1,66 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import React, { useState, useEffect, useMemo } from "react";
+import { 
+  useReactTable, 
+  getCoreRowModel, 
+  getFilteredRowModel, 
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender 
+} from "@tanstack/react-table";
+import { format, startOfDay, endOfDay, isWithinInterval, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { Edit, Trash2, Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { collection, deleteDoc, doc, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import {
-  Plus,
-  User,
-  Package,
-  Calendar,
-  CalendarDays,
-  TrendingUp,
-  Award,
-  DollarSign,
-  Users,
-  Truck,
-} from "lucide-react";
-import AutocompleteInput from "./AutocompleteInput";
-import SalesForm from "./sales/SalesForm";
-import SuppliesForm from "./SuppliesForm";
-import SalesAnalytics from "./SalesAnalytics";
-import DateFilter from "./DateFilter";
-import ClientForm from "./ClientForm";
-import ProductForm from "./ProductForm";
-import SalesTable from "./SalesTable";
 
-const SalesPage = () => {
-  const [showForm, setShowForm] = useState(false);
-  const [showSupplyForm, setShowSupplyForm] = useState(false);
-  const [editingSale, setEditingSale] = useState(null);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [showProductForm, setShowProductForm] = useState(false);
-  const [showClientForm, setShowClientForm] = useState(false);
-  const [showDateFilter, setShowDateFilter] = useState(false);
-  const [dateFilter, setDateFilter] = useState({
-    type: 'today',
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date().toISOString().split("T")[0],
-  });
-  const [newProduct, setNewProduct] = useState({ name: "", price: "" });
-  const [newClient, setNewClient] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-  });
-  const [newSupply, setNewSupply] = useState({
-    productId: "",
-    supplyType: "",
-    quantity: "",
-    date: new Date().toISOString().split("T")[0],
-  });
+const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale, setShowForm }) => {
   const [sales, setSales] = useState([]);
-  const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
-  const [supplies, setSupplies] = useState([]);
   const [user, setUser] = useState(null);
-  const [clientPage, setClientPage] = useState(1);
-  const [clientSort, setClientSort] = useState('name');
-  const clientsPerPage = 10;
+  const [sorting, setSorting] = useState([{ id: 'date', desc: true }]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 25,
+  });
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -81,21 +47,6 @@ const SalesPage = () => {
         }
       );
 
-      const clientsQuery = query(collection(db, `users/${user.uid}/clients`));
-      const unsubscribeClients = onSnapshot(
-        clientsQuery,
-        (snapshot) => {
-          const clientsData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setClients(clientsData);
-        },
-        (err) => {
-          console.error("Error fetching clients:", err);
-        }
-      );
-
       const productsQuery = query(collection(db, `users/${user.uid}/products`));
       const unsubscribeProducts = onSnapshot(
         productsQuery,
@@ -111,343 +62,520 @@ const SalesPage = () => {
         }
       );
 
-      const suppliesQuery = query(collection(db, `users/${user.uid}/supplies`));
-      const unsubscribeSupplies = onSnapshot(
-        suppliesQuery,
-        (snapshot) => {
-          const suppliesData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setSupplies(suppliesData);
-        },
-        (err) => {
-          console.error("Error fetching supplies:", err);
-        }
-      );
-
       return () => {
         unsubscribeSales();
-        unsubscribeClients();
         unsubscribeProducts();
-        unsubscribeSupplies();
       };
     }
   }, [user]);
 
-  const getFilteredSupplies = () => {
-    let filtered = supplies;
-    if (dateFilter.type !== 'all') {
-      const start = new Date(dateFilter.startDate);
-      const end = new Date(dateFilter.endDate);
-      end.setHours(23, 59, 59, 999);
-      filtered = supplies.filter(supply => {
-        const supplyDate = new Date(supply.date);
-        return supplyDate >= start && supplyDate <= end;
-      });
-    }
-    return filtered;
-  };
-
-  const getSortedProducts = () => {
-    const productSales = products.map(product => {
-      const totalSales = sales
-        .filter(sale => sale.productId === product.id)
-        .reduce((sum, sale) => sum + sale.quantity, 0);
-      return { ...product, totalSales };
-    });
-    return productSales.sort((a, b) => b.totalSales - a.totalSales);
-  };
-
-  const getSortedClients = () => {
-    const clientsWithPurchases = clients.map(client => {
-      const totalPurchases = sales
-        .filter(sale => sale.clientId === client.id)
-        .reduce((sum, sale) => sum + (sale.quantity * products.find(p => p.id === sale.productId)?.price || 0), 0);
-      return { ...client, totalPurchases };
-    });
-
-    switch (clientSort) {
-      case 'name':
-        return clientsWithPurchases.sort((a, b) => a.name.localeCompare(b.name));
-      case 'purchases':
-        return clientsWithPurchases.sort((a, b) => b.totalPurchases - a.totalPurchases);
+  const filteredSales = useMemo(() => {
+    if (!sales) return [];
+    
+    if (dateFilter.type === 'all') return sales;
+    
+    const now = new Date();
+    let startDate, endDate;
+    
+    switch (dateFilter.type) {
+      case 'today':
+        startDate = startOfDay(now);
+        endDate = endOfDay(now);
+        break;
+      case 'week':
+        startDate = startOfWeek(now);
+        endDate = endOfWeek(now);
+        break;
+      case 'month':
+        startDate = startOfMonth(now);
+        endDate = endOfMonth(now);
+        break;
+      case 'custom':
+        if (!dateFilter.startDate || !dateFilter.endDate) return sales;
+        startDate = startOfDay(parseISO(dateFilter.startDate));
+        endDate = endOfDay(parseISO(dateFilter.endDate));
+        break;
       default:
-        return clientsWithPurchases;
+        return sales;
+    }
+    
+    return sales.filter(sale => {
+      if (!sale.date) return false;
+      const saleDate = sale.date.toDate();
+      return isWithinInterval(saleDate, { start: startDate, end: endDate });
+    });
+  }, [sales, dateFilter]);
+
+  const totals = useMemo(() => {
+    return filteredSales.reduce((acc, sale) => {
+      const totalAmount = typeof sale.totalAmount === 'number' ? sale.totalAmount : parseFloat(sale.totalAmount) || 0;
+      const amountPaid = typeof sale.amountPaid === 'number' ? sale.amountPaid : parseFloat(sale.amountPaid) || 0;
+      const quantity = sale.product?.quantity || 0;
+      const discount = sale.product?.discount || 0;
+      
+      return {
+        totalSales: acc.totalSales + totalAmount,
+        totalPaid: acc.totalPaid + amountPaid,
+        totalQuantity: acc.totalQuantity + quantity,
+        totalDiscount: acc.totalDiscount + discount,
+        outstandingBalance: acc.outstandingBalance + (totalAmount - amountPaid)
+      };
+    }, {
+      totalSales: 0,
+      totalPaid: 0,
+      totalQuantity: 0,
+      totalDiscount: 0,
+      outstandingBalance: 0
+    });
+  }, [filteredSales]);
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Client",
+        accessorKey: "client",
+        cell: info => (
+          <div className="font-medium text-gray-900">
+            {info.getValue() || "-"}
+          </div>
+        ),
+      },
+      {
+        header: "Product",
+        accessorKey: "product",
+        cell: info => (
+          <div className="text-gray-800">
+            {products.find(prod => prod.id === info.getValue()?.productId)?.name || "-"}
+          </div>
+        ),
+      },
+      {
+        header: "Quantity",
+        accessorKey: "product",
+        cell: info => (
+          <div className="text-center font-medium">
+            {info.getValue()?.quantity || 0}
+          </div>
+        ),
+      },
+      {
+        header: "Unit Price",
+        accessorKey: "product",
+        cell: info => (
+          <div className="font-mono text-sm">
+            UGX {(info.getValue()?.unitPrice || 0).toLocaleString()}
+          </div>
+        ),
+      },
+      {
+        header: "Discount",
+        accessorKey: "product",
+        cell: info => (
+          <div className="font-mono text-sm text-orange-600">
+            {info.getValue()?.discount > 0 ? `-UGX ${info.getValue().discount.toLocaleString()}` : "-"}
+          </div>
+        ),
+      },
+      {
+        header: "Total",
+        accessorKey: "totalAmount",
+        cell: info => (
+          <span className="font-semibold text-green-700">
+            UGX {(info.getValue() || 0).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        header: "Payment Status",
+        accessorKey: "paymentStatus",
+        cell: info => (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            info.getValue() === 'paid' ? 'bg-green-100 text-green-800' :
+            info.getValue() === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            {(info.getValue() || 'unpaid').charAt(0).toUpperCase() + (info.getValue() || 'unpaid').slice(1)}
+          </span>
+        ),
+      },
+      {
+        header: "Amount Paid",
+        accessorKey: "amountPaid",
+        cell: info => (
+          <div className="font-mono text-sm">
+            UGX {(info.getValue() || 0).toLocaleString()}
+          </div>
+        ),
+      },
+      {
+        header: "Date",
+        accessorKey: "date",
+        cell: info => (
+          <span className="text-gray-500 text-sm">
+            {info.getValue() ? format(info.getValue().toDate(), 'MMM dd, yyyy') : '-'}
+          </span>
+        ),
+        sortingFn: (rowA, rowB) => {
+          const dateA = rowA.original.date?.toDate ? rowA.original.date.toDate() : new Date(rowA.original.date);
+          const dateB = rowB.original.date?.toDate ? rowB.original.date.toDate() : new Date(rowB.original.date);
+          return dateA.getTime() - dateB.getTime();
+        }
+      },
+      {
+        header: "Actions",
+        cell: info => (
+          <div className="flex gap-1">
+            <button
+              onClick={() => {
+                setEditingSale(info.row.original);
+                setShowForm(true);
+              }}
+              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+              title="Edit sale"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDeleteSale(info.row.original.id)}
+              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+              title="Delete sale"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [products, setEditingSale, setShowForm]
+  );
+
+  const table = useReactTable({
+    data: filteredSales || [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    globalFilterFn: (row, columnId, filterValue) => {
+      const client = row.getValue('client')?.toLowerCase() || '';
+      const product = products.find(prod => prod.id === row.getValue('product')?.productId)?.name.toLowerCase() || '';
+      const paymentStatus = row.getValue('paymentStatus')?.toLowerCase() || '';
+      const searchTerm = filterValue.toLowerCase();
+      return client.includes(searchTerm) || product.includes(searchTerm) || paymentStatus.includes(searchTerm);
+    },
+    state: {
+      globalFilter,
+      sorting,
+      pagination
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+  });
+
+  const handleDeleteSale = async (id) => {
+    if (window.confirm("Are you sure you want to delete this sale? This action cannot be undone.") && user) {
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/sales`, id));
+        const debtsQuery = query(
+          collection(db, `users/${user.uid}/debts`),
+          where("saleId", "==", id)
+        );
+        const querySnapshot = await getDocs(debtsQuery);
+        querySnapshot.forEach(async (doc) => {
+          await deleteDoc(doc.ref);
+        });
+      } catch (err) {
+        console.error("Error deleting sale:", err);
+        alert("Failed to delete sale. Please try again.");
+      }
     }
   };
 
-  const paginatedClients = getSortedClients().slice(
-    (clientPage - 1) * clientsPerPage,
-    clientPage * clientsPerPage
-  );
-  const totalClientPages = Math.ceil(getSortedClients().length / clientsPerPage);
+  const getDateFilterLabel = () => {
+    switch (dateFilter.type) {
+      case 'today':
+        return 'Today';
+      case 'week':
+        return 'This Week';
+      case 'month':
+        return 'This Month';
+      case 'custom':
+        return dateFilter.startDate && dateFilter.endDate 
+          ? `${format(parseISO(dateFilter.startDate), 'MMM dd')} - ${format(parseISO(dateFilter.endDate), 'MMM dd')}`
+          : 'Custom Range';
+      default:
+        return 'All Time';
+    }
+  };
 
   return (
-    <div className="space-y-8 max-w-[100vw] overflow-x-auto bg-white">
-      <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-slate-800 tracking-tight">
-              Sales Dashboard
-            </h1>
-            <p className="text-slate-600 text-lg max-w-2xl leading-relaxed mt-2">
-              Monitor your sales performance, manage transactions, and track your business growth with our comprehensive analytics platform.
-            </p>
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-green-800 font-medium">Total Sales:</span>
+              <span className="text-green-800 font-bold text-xl">
+                UGX {totals.totalSales.toLocaleString()}
+              </span>
+            </div>
           </div>
-
-          <DateFilter
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
-            showDateFilter={showDateFilter}
-            setShowDateFilter={setShowDateFilter}
-          />
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-blue-800 font-medium">Amount Paid:</span>
+              <span className="text-blue-800 font-bold text-xl">
+                UGX {totals.totalPaid.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-orange-800 font-medium">Outstanding:</span>
+              <span className="text-orange-800 font-bold text-xl">
+                UGX {totals.outstandingBalance.toLocaleString()}
+              </span>
+            </div>
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="text-purple-800 font-medium">Total Items:</span>
+              <span className="text-purple-800 font-bold text-xl">
+                {totals.totalQuantity.toLocaleString()}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Three Simple Circles */}
-      <div className="flex justify-center gap-6">
-        <button
-          onClick={() => setShowClientForm(true)}
-          className="w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
-        >
-          <Users className="w-8 h-8 text-white" />
-        </button>
-        
-        <button
-          onClick={() => setShowProductForm(true)}
-          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
-        >
-          <Package className="w-8 h-8 text-white" />
-        </button>
-        
-        <button
-          onClick={() => setShowSupplyForm(true)}
-          className="w-16 h-16 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
-        >
-          <Truck className="w-8 h-8 text-white" />
-        </button>
+      <div className="relative w-full sm:w-80">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by client, product, or status..."
+          value={globalFilter ?? ""}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+          className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200"
+        />
+        {globalFilter && (
+          <X
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+            onClick={() => setGlobalFilter("")}
+          />
+        )}
       </div>
 
-      {/* Sales Table - Prioritized at top */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions</h2>
-              <p className="text-slate-600">Complete record of all your sales activities</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Sales Records ({filteredSales.length})
+              </h2>
+              {dateFilter.type !== 'all' && (
+                <p className="text-gray-500 text-sm mt-1">
+                  {getDateFilterLabel()}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Live Data
+          </div>
+          
+          {filteredSales.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-green-800 font-medium">Total Sales:</span>
+                  <span className="text-green-800 font-bold text-lg">
+                    UGX {totals.totalSales.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-blue-800 font-medium">Amount Paid:</span>
+                  <span className="text-blue-800 font-bold text-lg">
+                    UGX {totals.totalPaid.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-orange-800 font-medium">Outstanding:</span>
+                  <span className="text-orange-800 font-bold text-lg">
+                    UGX {totals.outstandingBalance.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-800 font-medium">Total Items:</span>
+                  <span className="text-purple-800 font-bold text-lg">
+                    {totals.totalQuantity.toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-        <div className="p-6">
-          <SalesTable
-            sales={sales}
-            products={products}
-            globalFilter={globalFilter}
-            setGlobalFilter={setGlobalFilter}
-            dateFilter={dateFilter}
-            setEditingSale={setEditingSale}
-            setShowForm={setShowForm}
-          />
-        </div>
-      </div>
 
-      {sales && sales.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Performance Analytics</h2>
-            <p className="text-slate-600">Real-time insights into your sales performance and trends</p>
-          </div>
-          <div className="p-6">
-            <SalesAnalytics sales={sales} products={products} dateFilter={dateFilter} />
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Supplies</h2>
-          <p className="text-slate-600">Record of all supply transactions</p>
-        </div>
-        <div className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Product</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Type</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Quantity</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Date</th>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/50">
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th
+                      key={header.id}
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100/50 transition-colors"
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      <div className="flex items-center gap-2">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <div className="flex flex-col">
+                            <ChevronUp 
+                              className={`w-3 h-3 ${
+                                header.column.getIsSorted() === 'asc' ? 'text-blue-600' : 'text-gray-400'
+                              }`} 
+                            />
+                            <ChevronDown 
+                              className={`w-3 h-3 -mt-1 ${
+                                header.column.getIsSorted() === 'desc' ? 'text-blue-600' : 'text-gray-400'
+                              }`} 
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
-              </thead>
-              <tbody>
-                {getFilteredSupplies().map((supply) => (
-                  <tr key={supply.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {products.find(p => p.id === supply.productId)?.name || 'Unknown'}
+              ))}
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-50">
+              {table.getRowModel().rows.map(row => (
+                <tr key={row.id} className="hover:bg-gray-50/50 transition-colors duration-150">
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{supply.supplyType}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{supply.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {new Date(supply.date).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Products</h2>
-          <p className="text-slate-600">All products sorted by total sales</p>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {getSortedProducts().map((product) => (
-              <div key={product.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-800">{product.name}</h3>
-                    <p className="text-sm text-slate-600">Price: UGX {product.price.toFixed(2)}</p>
-                    <p className="text-sm text-slate-600">Total Sold: {product.totalSales} units</p>
+        {table.getRowModel().rows.length === 0 && (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {globalFilter ? "No matching sales found" : "No sales recorded yet"}
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {globalFilter ? "Try adjusting your search terms" : "Add your first sale to get started"}
+            </p>
+            {!globalFilter && (
+              <button
+                onClick={() => {
+                  setEditingSale(null);
+                  setShowForm(true);
+                }}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Create your first sale
+              </button>
+            )}
+          </div>
+        )}
+
+        {filteredSales.length > 0 && (
+          <div className="p-6 border-t border-gray-100">
+            <div className="flex flex-col gap-4">
+              {/* Bottom Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-800 font-medium">Total Sales:</span>
+                    <span className="text-green-800 font-bold text-lg">
+                      UGX {totals.totalSales.toLocaleString()}
+                    </span>
                   </div>
-                  <Package className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-blue-800 font-medium">Amount Paid:</span>
+                    <span className="text-blue-800 font-bold text-lg">
+                      UGX {totals.totalPaid.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-orange-800 font-medium">Outstanding:</span>
+                    <span className="text-orange-800 font-bold text-lg">
+                      UGX {totals.outstandingBalance.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-purple-800 font-medium">Total Items:</span>
+                    <span className="text-purple-800 font-bold text-lg">
+                      {totals.totalQuantity.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Clients</h2>
-          <p className="text-slate-600">All clients with sorting and pagination</p>
-        </div>
-        <div className="p-6">
-          <div className="mb-4">
-            <label className="text-sm font-medium text-slate-700 mr-2">Sort by:</label>
-            <select
-              value={clientSort}
-              onChange={(e) => setClientSort(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="name">Name</option>
-              <option value="purchases">Total Purchases</option>
-            </select>
-          </div>
-          <div className="space-y-4">
-            {paginatedClients.map((client) => (
-              <div key={client.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-800">{client.name}</h3>
-                    {client.email && <p className="text-sm text-slate-600">Email: {client.email}</p>}
-                    {client.phone && <p className="text-sm text-slate-600">Phone: {client.phone}</p>}
-                    {client.address && <p className="text-sm text-slate-600">Address: {client.address}</p>}
-                    <p className="text-sm text-slate-600">Total Purchases: UGX {client.totalPurchases.toFixed(2)}</p>
-                  </div>
-                  <Users className="w-6 h-6 text-emerald-600" />
+              
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Show</span>
+                  <select
+                    value={table.getState().pagination.pageSize}
+                    onChange={e => {
+                      table.setPageSize(Number(e.target.value))
+                    }}
+                    className="border border-gray-300 rounded-lg px-3 py-1 text-sm"
+                  >
+                    {[25, 50, 100].map(pageSize => (
+                      <option key={pageSize} value={pageSize}>
+                        {pageSize}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-600">entries</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                  </span>
+                  <button
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-          <div className="mt-4 flex justify-between items-center">
-            <button
-              onClick={() => setClientPage(prev => Math.max(prev - 1, 1))}
-              disabled={clientPage === 1}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-slate-600">
-              Page {clientPage} of {totalClientPages}
-            </span>
-            <button
-              onClick={() => setClientPage(prev => Math.min(prev + 1, totalClientPages))}
-              disabled={clientPage === totalClientPages}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Floating Add Sale Button */}
-      <button
-        onClick={() => {
-          setEditingSale(null);
-          setShowForm(true);
-        }}
-        className="fixed bottom-20 sm:bottom-24 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-[100]"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
-
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-          <div className="w-full max-w-lg">
-            <SalesForm
-              sale={editingSale}
-              clients={clients}
-              products={products}
-              onClose={() => {
-                setShowForm(false);
-                setEditingSale(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {showClientForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-          <div className="w-full max-w-lg">
-            <ClientForm
-              newClient={newClient}
-              setNewClient={setNewClient}
-              setShowClientForm={setShowClientForm}
-            />
-          </div>
-        </div>
-      )}
-
-      {showProductForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-          <div className="w-full max-w-lg">
-            <ProductForm
-              newProduct={newProduct}
-              setNewProduct={setNewProduct}
-              setShowProductForm={setShowProductForm}
-            />
-          </div>
-        </div>
-      )}
-
-      {showSupplyForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-          <div className="w-full max-w-lg">
-            <SuppliesForm
-              newSupply={newSupply}
-              setNewSupply={setNewSupply}
-              setShowSupplyForm={setShowSupplyForm}
-              products={products}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default SalesPage;
+export default SalesTable;
