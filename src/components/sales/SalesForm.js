@@ -1,3 +1,4 @@
+// src/components/SalesForm.jsx
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, updateDoc, doc, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { db, auth } from "../../firebase";
@@ -8,7 +9,7 @@ const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
   const [formData, setFormData] = useState({
     client: sale?.client || "",
     productId: sale?.product?.productId || products.find(p => p.name.toLowerCase() === "straws")?.id || "",
-    supplyType: sale?.product?.supplyType || "Kaveera",
+    supplyType: sale?.product?.supplyType || "kaveera",
     quantity: sale?.product?.quantity || 1,
     unitPrice: sale?.product?.unitPrice || "",
     discount: sale?.product?.discount || 0,
@@ -36,41 +37,28 @@ const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
     }
   }, [products, formData.productId]);
 
-  // Get available supply types for the selected product
   const getAvailableSupplyTypes = () => {
     if (!formData.productId) return [];
     
     const selectedProduct = products.find(p => p.id === formData.productId);
     if (!selectedProduct) return [];
     
-    // Check if it's toilet paper
-    if (selectedProduct.name.toLowerCase().includes('toilet')) {
-      return [
-        { value: "S", label: "S" },
-        { value: "P", label: "P" },
-        { value: "W", label: "W" }
-      ];
-    }
-    
-    // For straws and other products, get supply types from supplies collection
     const productSupplies = supplies.filter(supply => supply.productId === formData.productId);
-    const uniqueSupplyTypes = [...new Set(productSupplies.map(supply => supply.supplyType))];
+    const uniqueSupplyTypes = [...new Set(productSupplies.map(supply => supply.supplyType.toLowerCase()))]; // Normalize case
     
-    // If no supplies found, default to standard options
     if (uniqueSupplyTypes.length === 0) {
       return [
-        { value: "Kaveera", label: "Kaveera (K)" },
-        { value: "Box", label: "Box (B)" }
+        { value: "kaveera", label: "Kaveera (K)" },
+        { value: "box", label: "Box (B)" }
       ];
     }
     
     return uniqueSupplyTypes.map(type => ({
       value: type,
-      label: type === "Kaveera" ? "Kaveera (K)" : type === "Box" ? "Box (B)" : type
+      label: type === "kaveera" ? "Kaveera (K)" : type === "box" ? "Box (B)" : type
     }));
   };
 
-  // Reset supply type when product changes
   useEffect(() => {
     const availableTypes = getAvailableSupplyTypes();
     if (availableTypes.length > 0 && !availableTypes.find(type => type.value === formData.supplyType)) {
@@ -119,7 +107,7 @@ const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
         client: formData.client,
         product: {
           productId: formData.productId,
-          supplyType: formData.supplyType,
+          supplyType: formData.supplyType.toLowerCase(), // Normalize case
           quantity: parseInt(formData.quantity),
           unitPrice: parseFloat(formData.unitPrice),
           discount: parseFloat(formData.discount || 0),
@@ -160,7 +148,7 @@ const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
           amount: remainingBalance,
           productId: formData.productId,
           productName: product ? product.name : "",
-          supplyType: formData.supplyType,
+          supplyType: formData.supplyType.toLowerCase(), // Normalize case
           saleId: saleRef.id,
           lastPaidAmount: parseFloat(formData.amountPaid) || 0,
           createdAt: new Date(),
@@ -386,7 +374,7 @@ const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
               </div>
               {remainingBalance > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-neutral-600">Remaining Balance:</span>
+                  <span className="text-sm9791 text-neutral-600">Remaining Balance:</span>
                   <span className="font-medium text-red-600">{formatCurrency(remainingBalance)}</span>
                 </div>
               )}
