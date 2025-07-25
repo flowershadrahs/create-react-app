@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { format, startOfDay } from 'date-fns';
 import DateFilter from './reports/DateFilter';
 import PDFGenerator from './reports/PDFGenerator';
-import { DataContext } from './DataContext';
+import { DataContext } from '../DataContext';
 
 const ReportsPage = () => {
   const { user, sales, debts, expenses, clients, products, categories, bankDeposits, supplies, loading, error } = useContext(DataContext);
