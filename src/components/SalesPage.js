@@ -8,7 +8,7 @@ import ClientForm from "./ClientForm";
 import ProductForm from "./ProductForm";
 import SalesTable from "./SalesTable";
 import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
-import { DataContext } from "./DataContext";
+import { DataContext } from "../DataContext";
 
 const SalesPage = () => {
   const { user, sales, clients, products, supplies, loading, error } = useContext(DataContext);
