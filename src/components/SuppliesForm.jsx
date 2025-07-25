@@ -1,3 +1,4 @@
+// src/components/SuppliesForm.jsx
 import React, { useState, useEffect } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
@@ -17,30 +18,18 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     return () => unsubscribe();
   }, []);
 
-  // Get available supply types based on selected product
   const getAvailableSupplyTypes = () => {
     if (!newSupply.productId) return [];
     
     const selectedProduct = products.find(p => p.id === newSupply.productId);
     if (!selectedProduct) return [];
     
-    // Check if it's toilet paper
-    if (selectedProduct.name.toLowerCase().includes('toilet')) {
-      return [
-        { value: "S", label: "S" },
-        { value: "P", label: "P" },
-        { value: "W", label: "W" }
-      ];
-    }
-    
-    // For other products (straws, etc.), use standard options
     return [
-      { value: "Kaveera", label: "Kaveera (K)" },
-      { value: "Box", label: "Box (B)" }
+      { value: "kaveera", label: "Kaveera (K)" },
+      { value: "box", label: "Box (B)" }
     ];
   };
 
-  // Reset supply type when product changes
   useEffect(() => {
     const availableTypes = getAvailableSupplyTypes();
     if (availableTypes.length > 0 && !availableTypes.find(type => type.value === newSupply.supplyType)) {
@@ -50,7 +39,11 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
 
   const handleAddSupply = async (e) => {
     e.preventDefault();
-    if (!newSupply.productId.trim() || !newSupply.supplyType || !newSupply.quantity || !user) return;
+    if (!newSupply.productId.trim() || !newSupply.supplyType || !newSupply.quantity || !user) {
+      setError("Please fill in all required fields");
+      setIsSubmitting(false);
+      return;
+    }
     
     setIsSubmitting(true);
     setError("");
@@ -58,7 +51,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     try {
       await addDoc(collection(db, `users/${user.uid}/supplies`), {
         productId: newSupply.productId,
-        supplyType: newSupply.supplyType,
+        supplyType: newSupply.supplyType.toLowerCase(), // Normalize case
         quantity: parseInt(newSupply.quantity),
         date: new Date(newSupply.date),
         createdAt: new Date(),
@@ -69,7 +62,6 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     } catch (err) {
       console.error("Error adding supply:", err);
       setError("Failed to add supply. Please try again.");
-    } finally {
       setIsSubmitting(false);
     }
   };
