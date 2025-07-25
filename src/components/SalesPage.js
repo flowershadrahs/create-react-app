@@ -5,22 +5,16 @@ import {
   Plus,
   User,
   Package,
-  Calendar,
-  CalendarDays,
-  TrendingUp,
-  Award,
-  DollarSign,
-  Users,
   Truck,
 } from "lucide-react";
 import AutocompleteInput from "./AutocompleteInput";
 import SalesForm from "./sales/SalesForm";
 import SuppliesForm from "./SuppliesForm";
-import SalesAnalytics from "./SalesAnalytics";
 import DateFilter from "./DateFilter";
 import ClientForm from "./ClientForm";
 import ProductForm from "./ProductForm";
 import SalesTable from "./SalesTable";
+import { startOfDay, endOfDay, isWithinInterval, parseISO, startOfWeek, endOfMonth, startOfMonth, endOfWeek } from "date-fns";
 
 const SalesPage = () => {
   const [showForm, setShowForm] = useState(false);
@@ -177,6 +171,73 @@ const SalesPage = () => {
     }
   };
 
+  const getFilteredSales = () => {
+    if (dateFilter.type === 'all') return sales;
+
+    const startDate = startOfDay(parseISO(dateFilter.startDate));
+    const endDate = endOfDay(parseISO(dateFilter.endDate));
+
+    return sales.filter(sale => {
+      if (!sale.date) return false;
+      const saleDate = sale.date.toDate ? sale.date.toDate() : new Date(sale.date);
+      return isWithinInterval(saleDate, { start: startDate, end: endDate });
+    });
+  };
+
+  const getSupplySummary = () => {
+    const filteredSales = getFilteredSales();
+    const filteredSupplies = getFilteredSupplies();
+
+    const strawsProduct = products.find(p => p.name.toLowerCase() === "straws");
+    const toiletPaperProduct = products.find(p => p.name.toLowerCase() === "toilet papers");
+
+    const supplyTypes = [
+      { type: "kaveera", product: strawsProduct?.name || "Straws" },
+      { type: "box", product: strawsProduct?.name || "Straws" },
+      { type: "60s", product: toiletPaperProduct?.name || "Toilet Papers" },
+      { type: "20p", product: toiletPaperProduct?.name || "Toilet Papers" },
+      { type: "90w", product: toiletPaperProduct?.name || "Toilet Papers" },
+    ];
+
+    return supplyTypes.map(({ type, product }) => {
+      const totalSupplied = filteredSupplies
+        .filter(s => s.supplyType.toLowerCase() === type.toLowerCase())
+        .reduce((sum, supply) => sum + parseInt(supply.quantity || 0), 0);
+
+      const totalSold = filteredSales
+        .filter(s => s.product.supplyType.toLowerCase() === type.toLowerCase())
+        .reduce((sum, sale) => sum + parseInt(sale.product.quantity || 0), 0);
+
+      return {
+        supplyType: type,
+        product,
+        totalSupplied,
+        totalSold,
+        balance: totalSupplied - totalSold,
+      };
+    }).filter(summary => summary.totalSupplied > 0 || summary.totalSold > 0);
+  };
+
+  const getSalesSummary = () => {
+    const filteredSales = getFilteredSales();
+    const strawsProduct = products.find(p => p.name.toLowerCase() === "straws");
+    const toiletPaperProduct = products.find(p => p.name.toLowerCase() === "toilet papers");
+
+    const strawsSales = filteredSales.filter(s => s.product.productId === strawsProduct?.id);
+    const toiletPaperSales = filteredSales.filter(s => s.product.productId === toiletPaperProduct?.id);
+
+    const calculateTotals = (sales) => ({
+      totalQuantity: sales.reduce((sum, sale) => sum + parseInt(sale.product.quantity || 0), 0),
+      totalAmount: sales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || 0), 0),
+      totalDebt: sales.reduce((sum, sale) => sum + (parseFloat(sale.totalAmount || 0) - parseFloat(sale.amountPaid || 0)), 0),
+    });
+
+    return {
+      straws: calculateTotals(strawsSales),
+      toiletPaper: calculateTotals(toiletPaperSales),
+    };
+  };
+
   const paginatedClients = getSortedClients().slice(
     (clientPage - 1) * clientsPerPage,
     clientPage * clientsPerPage
@@ -205,18 +266,17 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {/* Three Simple Circles */}
       <div className="flex justify-center gap-6">
         <button
           onClick={() => setShowClientForm(true)}
           className="w-16 h-16 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
         >
-          <Users className="w-8 h-8 text-white" />
+          <User className="w-8 h-8 text-white" />
         </button>
         
         <button
           onClick={() => setShowProductForm(true)}
-          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale "['-110 shadow-lg"
         >
           <Package className="w-8 h-8 text-white" />
         </button>
@@ -229,13 +289,12 @@ const SalesPage = () => {
         </button>
       </div>
 
-      {/* Sales Table - Prioritized at top */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions</h2>
-              <p className="text-slate-600">Complete record of all your sales activities</p>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions - Straws</h2>
+              <p className="text-slate-600">Complete record of all straws sales activities</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -247,7 +306,7 @@ const SalesPage = () => {
         </div>
         <div className="p-6">
           <SalesTable
-            sales={sales}
+            sales={sales.filter(s => products.find(p => p.id === s.product.productId)?.name.toLowerCase() === "straws")}
             products={products}
             globalFilter={globalFilter}
             setGlobalFilter={setGlobalFilter}
@@ -258,17 +317,107 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {sales && sales.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Performance Analytics</h2>
-            <p className="text-slate-600">Real-time insights into your sales performance and trends</p>
-          </div>
-          <div className="p-6">
-            <SalesAnalytics sales={sales} products={products} dateFilter={dateFilter} />
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions - Toilet Papers</h2>
+              <p className="text-slate-600">Complete record of all toilet paper sales activities</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Live Data
+              </div>
+            </div>
           </div>
         </div>
-      )}
+        <div className="p-6">
+          <SalesTable
+            sales={sales.filter(s => products.find(p => p.id === s.product.productId)?.name.toLowerCase() === "toilet papers")}
+            products={products}
+            globalFilter={globalFilter}
+            setGlobalFilter={setGlobalFilter}
+            dateFilter={dateFilter}
+            setEditingSale={setEditingSale}
+            setShowForm={setShowForm}
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Summary</h2>
+          <p className="text-slate-600">Summary of total sales, amount paid, and debts for today</p>
+        </div>
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Product</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Total Quantity</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Total Amount (UGX)</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Total Debt (UGX)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-slate-100">
+                  <td className="px-4 py-3 text-sm text-slate-600">Straws</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().straws.totalQuantity.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().straws.totalAmount.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().straws.totalDebt.toLocaleString()}</td>
+                </tr>
+                <tr className="border-t border-slate-100">
+                  <td className="px-4 py-3 text-sm text-slate-600">Toilet Papers</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().toiletPaper.totalQuantity.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().toiletPaper.totalAmount.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{getSalesSummary().toiletPaper.totalDebt.toLocaleString()}</td>
+                </tr>
+                <tr className="border-t border-slate-100 font-bold">
+                  <td className="px-4 py-3 text-sm text-slate-800">Total</td>
+                  <td className="px-4 py-3 text-sm text-slate-800">{(getSalesSummary().straws.totalQuantity + getSalesSummary().toiletPaper.totalQuantity).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-800">{(getSalesSummary().straws.totalAmount + getSalesSummary().toiletPaper.totalAmount).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-slate-800">{(getSalesSummary().straws.totalDebt + getSalesSummary().toiletPaper.totalDebt).toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-100">
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Supplies Summary</h2>
+          <p className="text-slate-600">Summary of supplies taken, sold, and balance for the selected period</p>
+        </div>
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Supply Type</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Product</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Quantity Taken</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Quantity Sold</th>
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getSupplySummary().map((summary, index) => (
+                  <tr key={index} className="border-t border-slate-100">
+                    <td className="px-4 py-3 text-sm text-slate-600">{summary.supplyType}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{summary.product}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{summary.totalSupplied.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{summary.totalSold.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{summary.balance.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100">
@@ -356,7 +505,7 @@ const SalesPage = () => {
                     {client.address && <p className="text-sm text-slate-600">Address: {client.address}</p>}
                     <p className="text-sm text-slate-600">Total Purchases: UGX {client.totalPurchases.toFixed(2)}</p>
                   </div>
-                  <Users className="w-6 h-6 text-emerald-600" />
+                  <User className="w-6 h-6 text-emerald-600" />
                 </div>
               </div>
             ))}
@@ -383,34 +532,34 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {/* Floating Add Sale Button */}
-      <button
-        onClick={() => {
-          setEditingSale(null);
-          setShowForm(true);
-        }}
-        className="fixed bottom-20 sm:bottom-24 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-all duration-200 hover:scale-110 z-[100]"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {!showForm && (
+        <button
+          onClick={() => {
+            setEditingSale(null);
+            setShowForm(true);
+          }}
+          className="fixed bottom-20 sm:bottom-24 right-6 bg-purple-600 text-white rounded-full p-4 shadow-lg hover:bg-purple-700 transition-all duration-200 hover:scale-110 z-[100]"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
-
-{showForm && (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-    <div className="w-full max-w-lg">
-      <SalesForm
-        sale={editingSale}
-        clients={clients}
-        products={products}
-        supplies={supplies}  // Add this line
-        onClose={() => {
-          setShowForm(false);
-          setEditingSale(null);
-        }}
-      />
-    </div>
-  </div>
-)}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
+          <div className="w-full max-w-lg">
+            <SalesForm
+              sale={editingSale}
+              clients={clients}
+              products={products}
+              supplies={supplies}
+              onClose={() => {
+                setShowForm(false);
+                setEditingSale(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {showClientForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
