@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { collection, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '../firebase';
 import { Plus, Trash2, Edit, Search, X, Tag, ChevronUp, ChevronDown } from 'lucide-react';
 import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getPaginationRowModel } from '@tanstack/react-table';
 import AutocompleteInput from './AutocompleteInput';
