@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import { db, addDoc, collection, deleteDoc, doc } from '../firebase';
 import { Plus, Trash2, Users, Building2, TrendingUp, Wallet, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import AutocompleteInput from './AutocompleteInput';
