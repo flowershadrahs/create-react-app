@@ -2,11 +2,11 @@ import React, { useContext } from "react";
 import { User, Mail, Lock, LogOut } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
-import { AuthContext } from "../AuthContext";
+import { DataContext } from "../DataContext";
 import toast from "react-hot-toast";
 
 const ProfilePage = () => {
-  const { user } = useContext(AuthContext);
+  const { user, loading, error } = useContext(DataContext);
 
   const handleSignOut = async () => {
     try {
@@ -17,8 +17,8 @@ const ProfilePage = () => {
     }
   };
 
-  // Show loading if user is not available yet
-  if (!user) {
+  // Show loading if data is being fetched
+  if (loading) {
     return (
       <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-6 max-w-md w-full">
@@ -33,6 +33,28 @@ const ProfilePage = () => {
               <div className="h-12 bg-gray-300 rounded-lg"></div>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if data fetching failed
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2 max-w-md w-full">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if user is not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-6 max-w-md w-full text-center">
+          <p className="text-neutral-600 text-lg">Please log in to view your profile.</p>
         </div>
       </div>
     );
