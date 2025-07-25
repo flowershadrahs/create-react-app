@@ -1,3 +1,4 @@
+// SalesPage.jsx
 import React, { useState, useEffect } from "react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../firebase";
@@ -14,7 +15,7 @@ import DateFilter from "./DateFilter";
 import ClientForm from "./ClientForm";
 import ProductForm from "./ProductForm";
 import SalesTable from "./SalesTable";
-import { startOfDay, endOfDay, isWithinInterval, parseISO, startOfWeek, endOfMonth, startOfMonth, endOfWeek } from "date-fns";
+import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
 
 const SalesPage = () => {
   const [showForm, setShowForm] = useState(false);
@@ -161,20 +162,20 @@ const SalesPage = () => {
     const toiletPaperProduct = products.find(p => p.name.toLowerCase() === "toilet papers");
 
     const supplyTypes = [
-      { type: "kaveera", product: strawsProduct?.name || "Straws" },
-      { type: "box", product: strawsProduct?.name || "Straws" },
-      { type: "60s", product: toiletPaperProduct?.name || "Toilet Papers" },
-      { type: "20p", product: toiletPaperProduct?.name || "Toilet Papers" },
-      { type: "90w", product: toiletPaperProduct?.name || "Toilet Papers" },
+      { type: "kaveera", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
+      { type: "box", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
+      { type: "60s", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
+      { type: "20p", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
+      { type: "90w", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
     ];
 
-    return supplyTypes.map(({ type, product }) => {
+    return supplyTypes.map(({ type, productId, product }) => {
       const totalSupplied = filteredSupplies
-        .filter(s => s.supplyType.toLowerCase() === type.toLowerCase())
+        .filter(s => s.supplyType.toLowerCase() === type.toLowerCase() && s.productId === productId)
         .reduce((sum, supply) => sum + parseInt(supply.quantity || 0), 0);
 
       const totalSold = filteredSales
-        .filter(s => s.product.supplyType.toLowerCase() === type.toLowerCase())
+        .filter(s => s.product.supplyType.toLowerCase() === type.toLowerCase() && s.product.productId === productId)
         .reduce((sum, sale) => sum + parseInt(sale.product.quantity || 0), 0);
 
       return {
