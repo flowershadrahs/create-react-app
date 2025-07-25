@@ -1,28 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { db, addDoc, collection, deleteDoc, doc, query, onSnapshot } from '../firebase';
+import React, { useState, useMemo } from 'react';
+import { db, addDoc, collection, deleteDoc, doc } from '../firebase';
 import { Plus, Trash2, Users, Building2, TrendingUp, Wallet, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import AutocompleteInput from './AutocompleteInput';
-import { auth } from '../firebase';
 import DateFilter from './DateFilter';
+import { DataContext } from './DataContext';
 
 const BankPage = () => {
+  const { user, bankDeposits, loading, error } = useContext(DataContext);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [depositor, setDepositor] = useState('');
   const [bank, setBank] = useState('');
   const [showAddDepositorModal, setShowAddDepositorModal] = useState(false);
   const [newDepositorName, setNewDepositorName] = useState('');
-  const [bankDeposits, setBankDeposits] = useState([]);
   const [depositors, setDepositors] = useState([]);
-  const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState({
     type: 'today',
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date().toISOString().split("T")[0]
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
   });
   const itemsPerPage = 8;
 
@@ -36,15 +35,22 @@ const BankPage = () => {
     'Cairo Bank Uganda',
     'Bank of Africa Uganda',
     'Orient Bank',
-    'Post Bank Uganda'
+    'Post Bank Uganda',
   ];
 
   const bankOptions = useMemo(() => {
     return ugandanBanks.map((bankName) => ({
       id: bankName,
-      name: bankName
+      name: bankName,
     }));
   }, []);
+
+  // Update depositors based on bankDeposits
+  useMemo(() => {
+    if (bankDeposits && Array.isArray(bankDeposits)) {
+      setDepositors([...new Set(bankDeposits.map((d) => d.depositor).filter(Boolean))]);
+    }
+  }, [bankDeposits]);
 
   const depositorColors = useMemo(() => {
     const colors = [
@@ -65,41 +71,11 @@ const BankPage = () => {
     return colorMap;
   }, [depositors]);
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const bankQuery = query(collection(db, `users/${user.uid}/bankDeposits`));
-      const unsubscribeBank = onSnapshot(
-        bankQuery,
-        (snapshot) => {
-          const bankData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setBankDeposits(bankData);
-          setDepositors([...new Set(bankData.map((d) => d.depositor).filter(Boolean))]);
-        },
-        (err) => {
-          console.error("Error fetching bank deposits:", err);
-        }
-      );
-
-      return () => unsubscribeBank();
-    }
-  }, [user]);
-
   const depositorOptions = useMemo(() => {
     if (!depositors || !Array.isArray(depositors)) return [];
     return depositors.map((depositorName) => ({
       id: depositorName,
-      name: depositorName
+      name: depositorName,
     }));
   }, [depositors]);
 
@@ -136,7 +112,7 @@ const BankPage = () => {
       totalDeposits,
       uniqueDepositors,
       thisMonthAmount,
-      thisMonthDeposits: thisMonthDeposits.length
+      thisMonthDeposits: thisMonthDeposits.length,
     };
   }, [filteredDeposits]);
 
@@ -228,9 +204,25 @@ const BankPage = () => {
     return new Date(dateString).toLocaleDateString('en-UG', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
+
+  if (loading) {
+    return <div className="text-center py-12 text-slate-600">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2">
+        {error}
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <div className="text-center py-12 text-slate-600">Please log in to view bank deposits.</div>;
+  }
 
   return (
     <div className="space-y-8 max-w-[100vw] overflow-x-hidden bg-white">
@@ -435,10 +427,10 @@ const BankPage = () => {
                 <Wallet className="w-8 h-8 text-slate-400" />
               </div>
               <p className="text-slate-500 text-lg mb-2">
-                {dateFilter.type !== 'all' ? "No deposits found for selected period" : "No deposits found"}
+                {dateFilter.type !== 'all' ? 'No deposits found for selected period' : 'No deposits found'}
               </p>
               <p className="text-slate-400">
-                {dateFilter.type !== 'all' ? "Try adjusting your date filter" : "Add your first deposit above to get started"}
+                {dateFilter.type !== 'all' ? 'Try adjusting your date filter' : 'Add your first deposit above to get started'}
               </p>
             </div>
           ) : (
