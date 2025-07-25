@@ -1,9 +1,10 @@
 import React, { useState, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthContext } from './AuthContext';
+import { DataProvider } from './DataContext';
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { AuthContext } from './AuthContext';
-import { User, ShoppingCart, CreditCard, TrendingDown, Banknote, FileText, AlertCircle, RefreshCw, LogOut, Menu } from 'lucide-react';
+import { User, ShoppingCart, CreditCard, TrendingDown, Banknote, FileText, LogOut, Menu } from 'lucide-react';
 import SalesPage from './components/SalesPage';
 import ExpensesPage from './components/ExpensesPage';
 import DebtsPage from './components/DebtsPage';
@@ -14,7 +15,7 @@ import Auth from './components/Auth';
 import { auth } from './firebase';
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState("sales");
+  const [activeTab, setActiveTab] = useState('sales');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, loading: authLoading } = useContext(AuthContext);
 
@@ -22,7 +23,7 @@ const App = () => {
     const navigate = useNavigate();
 
     const handleSignOut = () => {
-      setActiveTab("sales");
+      setActiveTab('sales');
       auth.signOut();
       navigate('/');
     };
@@ -52,7 +53,7 @@ const App = () => {
                 </button>
                 <button
                   onClick={() => {
-                    setActiveTab("profile");
+                    setActiveTab('profile');
                     navigate('/profile');
                   }}
                   className="p-2 rounded-lg hover:bg-white/20 transition-colors duration-200"
@@ -72,15 +73,15 @@ const App = () => {
     const navigate = useNavigate();
 
     const tabs = [
-      { id: "sales", name: "Sales", icon: ShoppingCart, path: '/sales', color: "text-emerald-600" },
-      { id: "debts", name: "Debts", icon: CreditCard, path: '/debts', color: "text-orange-600" },
-      { id: "expenses", name: "Expenses", icon: TrendingDown, path: '/expenses', color: "text-red-600" },
-      { id: "bank", name: "Bank", icon: Banknote, path: '/bank', color: "text-blue-600" },
-      { id: "reports", name: "Reports", icon: FileText, path: '/reports', color: "text-purple-600" },
+      { id: 'sales', name: 'Sales', icon: ShoppingCart, path: '/sales', color: 'text-emerald-600' },
+      { id: 'debts', name: 'Debts', icon: CreditCard, path: '/debts', color: 'text-orange-600' },
+      { id: 'expenses', name: 'Expenses', icon: TrendingDown, path: '/expenses', color: 'text-red-600' },
+      { id: 'bank', name: 'Bank', icon: Banknote, path: '/bank', color: 'text-blue-600' },
+      { id: 'reports', name: 'Reports', icon: FileText, path: '/reports', color: 'text-purple-600' },
     ];
 
     const handleSignOut = () => {
-      setActiveTab("sales");
+      setActiveTab('sales');
       auth.signOut();
       navigate('/');
       setIsSidebarOpen(false);
@@ -134,11 +135,11 @@ const App = () => {
     const navigate = useNavigate();
 
     const tabs = [
-      { id: "sales", name: "Sales", icon: ShoppingCart, path: '/sales', color: "text-emerald-600" },
-      { id: "debts", name: "Debts", icon: CreditCard, path: '/debts', color: "text-orange-600" },
-      { id: "expenses", name: "Expenses", icon: TrendingDown, path: '/expenses', color: "text-red-600" },
-      { id: "bank", name: "Bank", icon: Banknote, path: '/bank', color: "text-blue-600" },
-      { id: "reports", name: "Reports", icon: FileText, path: '/reports', color: "text-purple-600" },
+      { id: 'sales', name: 'Sales', icon: ShoppingCart, path: '/sales', color: 'text-emerald-600' },
+      { id: 'debts', name: 'Debts', icon: CreditCard, path: '/debts', color: 'text-orange-600' },
+      { id: 'expenses', name: 'Expenses', icon: TrendingDown, path: '/expenses', color: 'text-red-600' },
+      { id: 'bank', name: 'Bank', icon: Banknote, path: '/bank', color: 'text-blue-600' },
+      { id: 'reports', name: 'Reports', icon: FileText, path: '/reports', color: 'text-purple-600' },
     ];
 
     return (
@@ -155,7 +156,7 @@ const App = () => {
                 className={`flex-1 flex flex-col items-center justify-center py-3 sm:py-4 px-1 text-xs font-medium transition-all duration-300 relative min-h-[70px] sm:min-h-[80px] group ${
                   activeTab === tab.id
                     ? `${tab.color} bg-gradient-to-t from-neutral-50 to-transparent`
-                    : "text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50/50"
+                    : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50/50'
                 }`}
                 aria-label={tab.name}
               >
@@ -274,35 +275,37 @@ const App = () => {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-        <Header />
-        {user && <Sidebar />}
-        <main className="pt-[60px] pb-[90px] sm:pb-[100px] md:ml-64 min-h-screen">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            <div className="animate-in fade-in duration-500">
-              <Routes>
-                {user ? (
-                  <>
-                    <Route path="/" element={<Navigate to="/sales" replace />} />
-                    <Route path="/sales" element={<SalesPage />} />
-                    <Route path="/debts" element={<DebtsPage />} />
-                    <Route path="/expenses" element={<ExpensesPage />} />
-                    <Route path="/bank" element={<BankPage />} />
-                    <Route path="/reports" element={<ReportsPage />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="*" element={<Navigate to="/sales" replace />} />
-                  </>
-                ) : (
-                  <>
-                    <Route path="*" element={<Auth />} />
-                  </>
-                )}
-              </Routes>
+      <DataProvider>
+        <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+          <Header />
+          {user && <Sidebar />}
+          <main className="pt-[60px] pb-[90px] sm:pb-[100px] md:ml-64 min-h-screen">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+              <div className="animate-in fade-in duration-500">
+                <Routes>
+                  {user ? (
+                    <>
+                      <Route path="/" element={<Navigate to="/sales" replace />} />
+                      <Route path="/sales" element={<SalesPage />} />
+                      <Route path="/debts" element={<DebtsPage />} />
+                      <Route path="/expenses" element={<ExpensesPage />} />
+                      <Route path="/bank" element={<BankPage />} />
+                      <Route path="/reports" element={<ReportsPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="*" element={<Navigate to="/sales" replace />} />
+                    </>
+                  ) : (
+                    <>
+                      <Route path="*" element={<Auth />} />
+                    </>
+                  )}
+                </Routes>
+              </div>
             </div>
-          </div>
-        </main>
-        {user && <Navigation />}
-      </div>
+          </main>
+          {user && <Navigation />}
+        </div>
+      </DataProvider>
     </Router>
   );
 };
