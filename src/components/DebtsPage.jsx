@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { deleteDoc, doc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '../firebase';
 import { Plus } from 'lucide-react';
 import DebtForm from './debts/DebtForm';
 import SalesForm from './sales/SalesForm';
