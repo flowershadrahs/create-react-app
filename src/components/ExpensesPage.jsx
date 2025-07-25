@@ -1,26 +1,24 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { collection, addDoc, updateDoc, doc, deleteDoc, query, onSnapshot } from "firebase/firestore";
-import { db, auth } from "../firebase";
-import { Plus, Trash2, Edit, Search, X, Tag, ChevronUp, ChevronDown } from "lucide-react";
-import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getPaginationRowModel } from "@tanstack/react-table";
-import AutocompleteInput from "./AutocompleteInput";
-import ExpenseForm from "./ExpenseForm";
-import ExpensesDateFilter from "./ExpensesDateFilter";
-import { format } from "date-fns";
+import React, { useState, useEffect, useMemo, useContext } from 'react';
+import { collection, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { Plus, Trash2, Edit, Search, X, Tag, ChevronUp, ChevronDown } from 'lucide-react';
+import { useReactTable, getCoreRowModel, flexRender, getSortedRowModel, getPaginationRowModel } from '@tanstack/react-table';
+import AutocompleteInput from './AutocompleteInput';
+import ExpenseForm from './ExpenseForm';
+import ExpensesDateFilter from './ExpensesDateFilter';
+import { format } from 'date-fns';
+import { DataContext } from './DataContext';
 
 const ExpensesPage = () => {
+  const { user, expenses, categories, loading, error } = useContext(DataContext);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState('');
   const [filteredExpenses, setFilteredExpenses] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryError, setCategoryError] = useState("");
-  const [expenses, setExpenses] = useState([]);
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState("");
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryError, setCategoryError] = useState('');
   const [sorting, setSorting] = useState([{ id: 'createdAt', desc: true }]);
   const [dateFilter, setDateFilter] = useState({
     type: 'all',
@@ -32,55 +30,6 @@ const ExpensesPage = () => {
     pageIndex: 0,
     pageSize: 25,
   });
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const expensesQuery = query(collection(db, `users/${user.uid}/expenses`));
-      const unsubscribeExpenses = onSnapshot(
-        expensesQuery,
-        (snapshot) => {
-          const expensesData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setExpenses(expensesData);
-        },
-        (err) => {
-          console.error("Error fetching expenses:", err);
-          setError("Failed to load expenses");
-        }
-      );
-
-      const categoriesQuery = query(collection(db, `users/${user.uid}/categories`));
-      const unsubscribeCategories = onSnapshot(
-        categoriesQuery,
-        (snapshot) => {
-          const categoriesList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            name: doc.data().name,
-          }));
-          setCategories(categoriesList);
-          setError("");
-        },
-        (err) => {
-          console.error("Error fetching categories:", err);
-          setError("Failed to load categories");
-        }
-      );
-
-      return () => {
-        unsubscribeExpenses();
-        unsubscribeCategories();
-      };
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!expenses || !Array.isArray(expenses)) {
@@ -103,7 +52,7 @@ const ExpensesPage = () => {
         dateMatch = expenseDate >= startDate && expenseDate <= endDate;
       }
 
-      return (categoryMatch || payeeMatch || descriptionMatch || filter === "") && dateMatch;
+      return (categoryMatch || payeeMatch || descriptionMatch || filter === '') && dateMatch;
     });
     
     setFilteredExpenses(filtered);
@@ -119,17 +68,17 @@ const ExpensesPage = () => {
 
   const columns = [
     {
-      header: "Category",
-      accessorKey: "category",
+      header: 'Category',
+      accessorKey: 'category',
       cell: info => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          {info.getValue() || "Uncategorized"}
+          {info.getValue() || 'Uncategorized'}
         </span>
       ),
     },
     {
-      header: "Amount (UGX)",
-      accessorKey: "amount",
+      header: 'Amount (UGX)',
+      accessorKey: 'amount',
       cell: info => {
         const amount = info.getValue();
         const numAmount = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
@@ -146,26 +95,26 @@ const ExpensesPage = () => {
       }
     },
     {
-      header: "Description",
-      accessorKey: "description",
+      header: 'Description',
+      accessorKey: 'description',
       cell: info => (
         <span className="text-gray-900 font-medium">
-          {info.getValue() || "-"}
+          {info.getValue() || '-'}
         </span>
       ),
     },
     {
-      header: "Payee",
-      accessorKey: "payee",
+      header: 'Payee',
+      accessorKey: 'payee',
       cell: info => (
         <span className="text-gray-600">
-          {info.getValue() || "-"}
+          {info.getValue() || '-'}
         </span>
       ),
     },
     {
-      header: "Date",
-      accessorKey: "createdAt",
+      header: 'Date',
+      accessorKey: 'createdAt',
       cell: info => {
         const date = info.getValue();
         if (!date) return '-';
@@ -189,7 +138,7 @@ const ExpensesPage = () => {
       }
     },
     {
-      header: "Actions",
+      header: 'Actions',
       cell: info => (
         <div className="flex gap-1">
           <button
@@ -227,13 +176,13 @@ const ExpensesPage = () => {
   });
 
   const handleDeleteExpense = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) return;
+    if (!window.confirm('Are you sure you want to delete this expense?')) return;
     
     try {
       await deleteDoc(doc(db, `users/${user?.uid}/expenses`, id));
     } catch (err) {
-      console.error("Error deleting expense:", err);
-      setError("Failed to delete expense");
+      console.error('Error deleting expense:', err);
+      setCategoryError('Failed to delete expense');
     }
   };
 
@@ -241,7 +190,7 @@ const ExpensesPage = () => {
     e.preventDefault();
     
     if (!categoryName.trim()) {
-      setCategoryError("Category name is required");
+      setCategoryError('Category name is required');
       return;
     }
 
@@ -259,27 +208,30 @@ const ExpensesPage = () => {
         });
       }
       
-      setCategoryName("");
-      setCategoryError("");
+      setCategoryName('');
+      setCategoryError('');
       setShowCategoryModal(false);
       setEditingCategory(null);
     } catch (err) {
-      console.error("Error saving category:", err);
-      setCategoryError("Failed to save category. Please try again.");
+      console.error('Error saving category:', err);
+      setCategoryError('Failed to save category. Please try again.');
     }
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this category?")) return;
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
     
     try {
       await deleteDoc(doc(db, `users/${user?.uid}/categories`, id));
-      setCategories(categories.filter(category => category.id !== id));
     } catch (err) {
-      console.error("Error deleting category:", err);
-      setError("Failed to delete category");
+      console.error('Error deleting category:', err);
+      setCategoryError('Failed to delete category');
     }
   };
+
+  if (loading) {
+    return <div className="text-center py-12 text-slate-600">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -319,10 +271,10 @@ const ExpensesPage = () => {
         />
       </div>
 
-      {error && (
+      {(error || categoryError) && (
         <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2">
           <X className="w-5 h-5" />
-          {error}
+          {error || categoryError}
         </div>
       )}
 
@@ -338,7 +290,7 @@ const ExpensesPage = () => {
         {filter && (
           <X
             className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
-            onClick={() => setFilter("")}
+            onClick={() => setFilter('')}
           />
         )}
       </div>
@@ -419,10 +371,10 @@ const ExpensesPage = () => {
               <Search className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {filter || dateFilter.type !== 'all' ? "No matching expenses found" : "No expenses recorded yet"}
+              {filter || dateFilter.type !== 'all' ? 'No matching expenses found' : 'No expenses recorded yet'}
             </h3>
             <p className="text-gray-500">
-              {filter || dateFilter.type !== 'all' ? "Try adjusting your search terms or date filter" : "Add your first expense to get started"}
+              {filter || dateFilter.type !== 'all' ? 'Try adjusting your search terms or date filter' : 'Add your first expense to get started'}
             </p>
           </div>
         )}
@@ -516,8 +468,8 @@ const ExpensesPage = () => {
                 onClick={() => {
                   setShowCategoryModal(false);
                   setEditingCategory(null);
-                  setCategoryName("");
-                  setCategoryError("");
+                  setCategoryName('');
+                  setCategoryError('');
                 }}
                 className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
               >
@@ -538,7 +490,7 @@ const ExpensesPage = () => {
                   type="submit"
                   className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
                 >
-                  {editingCategory ? "Update" : "Add"}
+                  {editingCategory ? 'Update' : 'Add'}
                 </button>
               </div>
               {categoryError && (
