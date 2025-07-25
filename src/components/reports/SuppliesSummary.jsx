@@ -1,3 +1,4 @@
+// src/components/reports/SuppliesSummary.jsx
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 
 const SuppliesSummary = ({ doc, data, products, dateFilter, addTable, yPosition }) => {
@@ -18,14 +19,10 @@ const SuppliesSummary = ({ doc, data, products, dateFilter, addTable, yPosition 
     if (!Array.isArray(dataset)) return [];
     if (dateFilter.type === "all") return dataset;
     return dataset.filter((item) => {
-      if (!item.createdAt && !item.date) return true;
+      if (!item.date) return false; // Skip items without date
       try {
-        let itemDate;
-        if (item.createdAt) {
-          itemDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-        } else if (item.date) {
-          itemDate = new Date(item.date);
-        }
+        const itemDate = item.date ? new Date(item.date) : null;
+        if (!itemDate) return false;
         const start = dateFilter.startDate ? parseISO(dateFilter.startDate) : null;
         const end = dateFilter.endDate ? parseISO(dateFilter.endDate) : null;
         return start && end
@@ -33,16 +30,23 @@ const SuppliesSummary = ({ doc, data, products, dateFilter, addTable, yPosition 
           : true;
       } catch (error) {
         console.warn("Date filtering error:", error);
-        return true;
+        return false;
       }
     });
   };
 
   const filteredSupplies = filterData(data.supplies);
+  const filteredSales = filterData(data.sales);
+
   const supplySummary = filteredSupplies.reduce((acc, supply) => {
+    if (!supply.productId || !supply.supplyType || !supply.quantity) return acc; // Skip invalid supply records
     const product = products.find((p) => p.id === supply.productId);
-    const productName = product?.name || "Unknown";
-    const supplyType = supply.supplyType || "Unknown";
+    if (!product) {
+      console.warn(`Product not found for productId: ${supply.productId}`);
+      return acc; // Skip if product not found
+    }
+    const productName = product.name;
+    const supplyType = supply.supplyType.toLowerCase(); // Normalize case
     const key = `${supplyType}_${productName}`;
     if (!acc[key]) {
       acc[key] = {
@@ -53,8 +57,10 @@ const SuppliesSummary = ({ doc, data, products, dateFilter, addTable, yPosition 
       };
     }
     acc[key].quantity += parseInt(supply.quantity || 0);
-    const salesForProduct = filterData(data.sales).filter(
-      (sale) => sale.product?.productId === supply.productId && sale.product?.supplyType === supply.supplyType
+    const salesForProduct = filteredSales.filter(
+      (sale) =>
+        sale.product?.productId === supply.productId &&
+        (sale.product?.supplyType?.toLowerCase() === supplyType || !sale.product?.supplyType) // Handle missing supplyType
     );
     acc[key].quantitySold += salesForProduct.reduce(
       (sum, sale) => sum + parseInt(sale.product?.quantity || 0),
