@@ -1,34 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { auth } from "../firebase";
-import { format, startOfDay } from "date-fns";
-import DateFilter from "./reports/DateFilter";
-import PDFGenerator from "./reports/PDFGenerator";
-import useFirestoreData from "./reports/useFirestoreData";
+import React, { useState, useContext } from 'react';
+import { format, startOfDay } from 'date-fns';
+import DateFilter from './reports/DateFilter';
+import PDFGenerator from './reports/PDFGenerator';
+import { DataContext } from './DataContext';
 
 const ReportsPage = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const today = format(startOfDay(new Date()), "yyyy-MM-dd");
+  const { user, sales, debts, expenses, clients, products, categories, bankDeposits, supplies, loading, error } = useContext(DataContext);
+  const today = format(startOfDay(new Date()), 'yyyy-MM-dd');
   const [dateFilter, setDateFilter] = useState({
-    type: "today",
+    type: 'today',
     startDate: today,
     endDate: today,
   });
   const [showDateFilter, setShowDateFilter] = useState(false);
-
-  const { sales, debts, expenses, clients, products, categories, bankDeposits, supplies } = useFirestoreData(user, setLoading);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setLoading(false);
-        setError("Please log in to generate reports.");
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   const safeData = {
     sales: Array.isArray(sales) ? sales : [],
@@ -41,6 +25,17 @@ const ReportsPage = () => {
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeProducts = Array.isArray(products) ? products : [];
   const safeCategories = Array.isArray(categories) ? categories : [];
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="text-slate-600">Loading data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-[100vw] overflow-x-auto bg-white p-6">
@@ -69,14 +64,7 @@ const ReportsPage = () => {
             <p>{error}</p>
           </div>
         )}
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <p className="text-slate-600">Loading data...</p>
-          </div>
-        ) : user ? (
+        {user ? (
           <PDFGenerator
             reportType="consolidated"
             dateFilter={dateFilter}
@@ -85,9 +73,11 @@ const ReportsPage = () => {
             products={safeProducts}
             categories={safeCategories}
             userId={user.uid}
-            setError={setError}
+            setError={(err) => console.error(err)}
           />
-        ) : null}
+        ) : (
+          <div className="text-center py-12 text-slate-600">Please log in to generate reports.</div>
+        )}
       </div>
     </div>
   );
