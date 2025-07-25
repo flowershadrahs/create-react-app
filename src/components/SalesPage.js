@@ -47,9 +47,6 @@ const SalesPage = () => {
   const [products, setProducts] = useState([]);
   const [supplies, setSupplies] = useState([]);
   const [user, setUser] = useState(null);
-  const [clientPage, setClientPage] = useState(1);
-  const [clientSort, setClientSort] = useState('name');
-  const clientsPerPage = 10;
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -143,34 +140,6 @@ const SalesPage = () => {
     return filtered;
   };
 
-  const getSortedProducts = () => {
-    const productSales = products.map(product => {
-      const totalSales = sales
-        .filter(sale => sale.productId === product.id)
-        .reduce((sum, sale) => sum + sale.quantity, 0);
-      return { ...product, totalSales };
-    });
-    return productSales.sort((a, b) => b.totalSales - a.totalSales);
-  };
-
-  const getSortedClients = () => {
-    const clientsWithPurchases = clients.map(client => {
-      const totalPurchases = sales
-        .filter(sale => sale.clientId === client.id)
-        .reduce((sum, sale) => sum + (sale.quantity * products.find(p => p.id === sale.productId)?.price || 0), 0);
-      return { ...client, totalPurchases };
-    });
-
-    switch (clientSort) {
-      case 'name':
-        return clientsWithPurchases.sort((a, b) => a.name.localeCompare(b.name));
-      case 'purchases':
-        return clientsWithPurchases.sort((a, b) => b.totalPurchases - a.totalPurchases);
-      default:
-        return clientsWithPurchases;
-    }
-  };
-
   const getFilteredSales = () => {
     if (dateFilter.type === 'all') return sales;
 
@@ -238,12 +207,6 @@ const SalesPage = () => {
     };
   };
 
-  const paginatedClients = getSortedClients().slice(
-    (clientPage - 1) * clientsPerPage,
-    clientPage * clientsPerPage
-  );
-  const totalClientPages = Math.ceil(getSortedClients().length / clientsPerPage);
-
   return (
     <div className="space-y-8 max-w-[100vw] overflow-x-auto bg-white">
       <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
@@ -276,7 +239,7 @@ const SalesPage = () => {
         
         <button
           onClick={() => setShowProductForm(true)}
-          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale "['-110 shadow-lg"
+          className="w-16 h-16 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
         >
           <Package className="w-8 h-8 text-white" />
         </button>
@@ -415,119 +378,6 @@ const SalesPage = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Supplies</h2>
-          <p className="text-slate-600">Record of all supply transactions</p>
-        </div>
-        <div className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50">
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Product</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Type</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Quantity</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-slate-700">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredSupplies().map((supply) => (
-                  <tr key={supply.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {products.find(p => p.id === supply.productId)?.name || 'Unknown'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{supply.supplyType}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{supply.quantity}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {new Date(supply.date).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Products</h2>
-          <p className="text-slate-600">All products sorted by total sales</p>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {getSortedProducts().map((product) => (
-              <div key={product.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-800">{product.name}</h3>
-                    <p className="text-sm text-slate-600">Price: UGX {product.price.toFixed(2)}</p>
-                    <p className="text-sm text-slate-600">Total Sold: {product.totalSales} units</p>
-                  </div>
-                  <Package className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Clients</h2>
-          <p className="text-slate-600">All clients with sorting and pagination</p>
-        </div>
-        <div className="p-6">
-          <div className="mb-4">
-            <label className="text-sm font-medium text-slate-700 mr-2">Sort by:</label>
-            <select
-              value={clientSort}
-              onChange={(e) => setClientSort(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="name">Name</option>
-              <option value="purchases">Total Purchases</option>
-            </select>
-          </div>
-          <div className="space-y-4">
-            {paginatedClients.map((client) => (
-              <div key={client.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-800">{client.name}</h3>
-                    {client.email && <p className="text-sm text-slate-600">Email: {client.email}</p>}
-                    {client.phone && <p className="text-sm text-slate-600">Phone: {client.phone}</p>}
-                    {client.address && <p className="text-sm text-slate-600">Address: {client.address}</p>}
-                    <p className="text-sm text-slate-600">Total Purchases: UGX {client.totalPurchases.toFixed(2)}</p>
-                  </div>
-                  <User className="w-6 h-6 text-emerald-600" />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex justify-between items-center">
-            <button
-              onClick={() => setClientPage(prev => Math.max(prev - 1, 1))}
-              disabled={clientPage === 1}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-slate-600">
-              Page {clientPage} of {totalClientPages}
-            </span>
-            <button
-              onClick={() => setClientPage(prev => Math.min(prev + 1, totalClientPages))}
-              disabled={clientPage === totalClientPages}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 disabled:opacity-50"
-            >
-              Next
-            </button>
           </div>
         </div>
       </div>
