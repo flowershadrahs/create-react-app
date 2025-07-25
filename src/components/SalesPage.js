@@ -394,21 +394,23 @@ const SalesPage = () => {
         <Plus className="w-6 h-6" />
       </button>
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
-          <div className="w-full max-w-lg">
-            <SalesForm
-              sale={editingSale}
-              clients={clients}
-              products={products}
-              onClose={() => {
-                setShowForm(false);
-                setEditingSale(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
+
+{showForm && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
+    <div className="w-full max-w-lg">
+      <SalesForm
+        sale={editingSale}
+        clients={clients}
+        products={products}
+        supplies={supplies}  // Add this line
+        onClose={() => {
+          setShowForm(false);
+          setEditingSale(null);
+        }}
+      />
+    </div>
+  </div>
+)}
 
       {showClientForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-x-auto">
