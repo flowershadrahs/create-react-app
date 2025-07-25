@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useNavigate, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import { DataProvider } from './DataContext';
