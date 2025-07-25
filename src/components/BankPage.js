@@ -3,7 +3,7 @@ import { db, addDoc, collection, deleteDoc, doc } from '../firebase';
 import { Plus, Trash2, Users, Building2, TrendingUp, Wallet, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import AutocompleteInput from './AutocompleteInput';
 import DateFilter from './DateFilter';
-import { DataContext } from './DataContext';
+import { DataContext } from '../DataContext';
 
 const BankPage = () => {
   const { user, bankDeposits, loading, error } = useContext(DataContext);
