@@ -7,7 +7,7 @@ import AutocompleteInput from './AutocompleteInput';
 import ExpenseForm from './ExpenseForm';
 import ExpensesDateFilter from './ExpensesDateFilter';
 import { format } from 'date-fns';
-import { DataContext } from './DataContext';
+import { DataContext } from '../DataContext';
 
 const ExpensesPage = () => {
   const { user, expenses, categories, loading, error } = useContext(DataContext);
