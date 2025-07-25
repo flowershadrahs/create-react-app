@@ -17,6 +17,37 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     return () => unsubscribe();
   }, []);
 
+  // Get available supply types based on selected product
+  const getAvailableSupplyTypes = () => {
+    if (!newSupply.productId) return [];
+    
+    const selectedProduct = products.find(p => p.id === newSupply.productId);
+    if (!selectedProduct) return [];
+    
+    // Check if it's toilet paper
+    if (selectedProduct.name.toLowerCase().includes('toilet')) {
+      return [
+        { value: "S", label: "S" },
+        { value: "P", label: "P" },
+        { value: "W", label: "W" }
+      ];
+    }
+    
+    // For other products (straws, etc.), use standard options
+    return [
+      { value: "Kaveera", label: "Kaveera (K)" },
+      { value: "Box", label: "Box (B)" }
+    ];
+  };
+
+  // Reset supply type when product changes
+  useEffect(() => {
+    const availableTypes = getAvailableSupplyTypes();
+    if (availableTypes.length > 0 && !availableTypes.find(type => type.value === newSupply.supplyType)) {
+      setNewSupply(prev => ({ ...prev, supplyType: availableTypes[0]?.value || "" }));
+    }
+  }, [newSupply.productId]);
+
   const handleAddSupply = async (e) => {
     e.preventDefault();
     if (!newSupply.productId.trim() || !newSupply.supplyType || !newSupply.quantity || !user) return;
@@ -42,6 +73,8 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
       setIsSubmitting(false);
     }
   };
+
+  const availableSupplyTypes = getAvailableSupplyTypes();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -85,8 +118,11 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               >
                 <option value="" disabled>Select supply type</option>
-                <option value="Kaveera">Kaveera (K)</option>
-                <option value="Box">Box (B)</option>
+                {availableSupplyTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
               </select>
             </div>
             
@@ -126,7 +162,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
           </form>
         </div>
         
-        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shr ink-0">
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shrink-0">
           <button
             type="button"
             onClick={() => {
