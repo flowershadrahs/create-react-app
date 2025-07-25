@@ -1,13 +1,5 @@
-// SalesPage.jsx
-import React, { useState, useEffect } from "react";
-import { collection, query, onSnapshot } from "firebase/firestore";
-import { db, auth } from "../firebase";
-import {
-  Plus,
-  User,
-  Package,
-  Truck,
-} from "lucide-react";
+import React, { useState } from "react";
+import { Plus, User, Package, Truck } from "lucide-react";
 import AutocompleteInput from "./AutocompleteInput";
 import SalesForm from "./sales/SalesForm";
 import SuppliesForm from "./SuppliesForm";
@@ -16,8 +8,10 @@ import ClientForm from "./ClientForm";
 import ProductForm from "./ProductForm";
 import SalesTable from "./SalesTable";
 import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { DataContext } from "./DataContext";
 
 const SalesPage = () => {
+  const { user, sales, clients, products, supplies, loading, error } = useContext(DataContext);
   const [showForm, setShowForm] = useState(false);
   const [showSupplyForm, setShowSupplyForm] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
@@ -43,97 +37,14 @@ const SalesPage = () => {
     quantity: "",
     date: new Date().toISOString().split("T")[0],
   });
-  const [sales, setSales] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [supplies, setSupplies] = useState([]);
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const salesQuery = query(collection(db, `users/${user.uid}/sales`));
-      const unsubscribeSales = onSnapshot(
-        salesQuery,
-        (snapshot) => {
-          const salesData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setSales(salesData);
-        },
-        (err) => {
-          console.error("Error fetching sales:", err);
-        }
-      );
-
-      const clientsQuery = query(collection(db, `users/${user.uid}/clients`));
-      const unsubscribeClients = onSnapshot(
-        clientsQuery,
-        (snapshot) => {
-          const clientsData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setClients(clientsData);
-        },
-        (err) => {
-          console.error("Error fetching clients:", err);
-        }
-      );
-
-      const productsQuery = query(collection(db, `users/${user.uid}/products`));
-      const unsubscribeProducts = onSnapshot(
-        productsQuery,
-        (snapshot) => {
-          const productsData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setProducts(productsData);
-        },
-        (err) => {
-          console.error("Error fetching products:", err);
-        }
-      );
-
-      const suppliesQuery = query(collection(db, `users/${user.uid}/supplies`));
-      const unsubscribeSupplies = onSnapshot(
-        suppliesQuery,
-        (snapshot) => {
-          const suppliesData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setSupplies(suppliesData);
-        },
-        (err) => {
-          console.error("Error fetching supplies:", err);
-        }
-      );
-
-      return () => {
-        unsubscribeSales();
-        unsubscribeClients();
-        unsubscribeProducts();
-        unsubscribeSupplies();
-      };
-    }
-  }, [user]);
 
   const getFilteredSupplies = () => {
-    let filtered = supplies;
+    let filtered = supplies || [];
     if (dateFilter.type !== 'all') {
       const start = new Date(dateFilter.startDate);
       const end = new Date(dateFilter.endDate);
       end.setHours(23, 59, 59, 999);
-      filtered = supplies.filter(supply => {
+      filtered = filtered.filter(supply => {
         const supplyDate = new Date(supply.date);
         return supplyDate >= start && supplyDate <= end;
       });
@@ -142,12 +53,12 @@ const SalesPage = () => {
   };
 
   const getFilteredSales = () => {
-    if (dateFilter.type === 'all') return sales;
+    if (dateFilter.type === 'all') return sales || [];
 
     const startDate = startOfDay(parseISO(dateFilter.startDate));
     const endDate = endOfDay(parseISO(dateFilter.endDate));
 
-    return sales.filter(sale => {
+    return (sales || []).filter(sale => {
       if (!sale.date) return false;
       const saleDate = sale.date.toDate ? sale.date.toDate() : new Date(sale.date);
       return isWithinInterval(saleDate, { start: startDate, end: endDate });
@@ -156,7 +67,7 @@ const SalesPage = () => {
 
   // Get filtered sales specifically for straws
   const getStrawsSales = () => {
-    const strawsProduct = products.find(p => p.name.toLowerCase().includes("straw"));
+    const strawsProduct = (products || []).find(p => p.name.toLowerCase().includes("straw"));
     if (!strawsProduct) return [];
     
     return getFilteredSales().filter(sale => {
@@ -166,7 +77,7 @@ const SalesPage = () => {
 
   // Get filtered sales specifically for toilet papers
   const getToiletPaperSales = () => {
-    const toiletPaperProduct = products.find(p => p.name.toLowerCase().includes("toilet"));
+    const toiletPaperProduct = (products || []).find(p => p.name.toLowerCase().includes("toilet"));
     if (!toiletPaperProduct) return [];
     
     return getFilteredSales().filter(sale => {
@@ -178,8 +89,8 @@ const SalesPage = () => {
     const filteredSales = getFilteredSales();
     const filteredSupplies = getFilteredSupplies();
 
-    const strawsProduct = products.find(p => p.name.toLowerCase().includes("straw"));
-    const toiletPaperProduct = products.find(p => p.name.toLowerCase().includes("toilet"));
+    const strawsProduct = (products || []).find(p => p.name.toLowerCase().includes("straw"));
+    const toiletPaperProduct = (products || []).find(p => p.name.toLowerCase().includes("toilet"));
 
     const supplyTypes = [
       { type: "kaveera", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
@@ -223,6 +134,22 @@ const SalesPage = () => {
       toiletPaper: calculateTotals(toiletPaperSales),
     };
   };
+
+  if (loading) {
+    return <div className="text-center py-12 text-slate-600">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2">
+        {error}
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <div className="text-center py-12 text-slate-600">Please log in to view sales.</div>;
+  }
 
   return (
     <div className="space-y-8 max-w-[100vw] overflow-x-auto bg-white">
