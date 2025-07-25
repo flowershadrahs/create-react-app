@@ -154,12 +154,32 @@ const SalesPage = () => {
     });
   };
 
+  // Get filtered sales specifically for straws
+  const getStrawsSales = () => {
+    const strawsProduct = products.find(p => p.name.toLowerCase().includes("straw"));
+    if (!strawsProduct) return [];
+    
+    return getFilteredSales().filter(sale => {
+      return sale.product?.productId === strawsProduct.id;
+    });
+  };
+
+  // Get filtered sales specifically for toilet papers
+  const getToiletPaperSales = () => {
+    const toiletPaperProduct = products.find(p => p.name.toLowerCase().includes("toilet"));
+    if (!toiletPaperProduct) return [];
+    
+    return getFilteredSales().filter(sale => {
+      return sale.product?.productId === toiletPaperProduct.id;
+    });
+  };
+
   const getSupplySummary = () => {
     const filteredSales = getFilteredSales();
     const filteredSupplies = getFilteredSupplies();
 
-    const strawsProduct = products.find(p => p.name.toLowerCase() === "straws");
-    const toiletPaperProduct = products.find(p => p.name.toLowerCase() === "toilet papers");
+    const strawsProduct = products.find(p => p.name.toLowerCase().includes("straw"));
+    const toiletPaperProduct = products.find(p => p.name.toLowerCase().includes("toilet"));
 
     const supplyTypes = [
       { type: "kaveera", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
@@ -189,12 +209,8 @@ const SalesPage = () => {
   };
 
   const getSalesSummary = () => {
-    const filteredSales = getFilteredSales();
-    const strawsProduct = products.find(p => p.name.toLowerCase() === "straws");
-    const toiletPaperProduct = products.find(p => p.name.toLowerCase() === "toilet papers");
-
-    const strawsSales = filteredSales.filter(s => s.product.productId === strawsProduct?.id);
-    const toiletPaperSales = filteredSales.filter(s => s.product.productId === toiletPaperProduct?.id);
+    const strawsSales = getStrawsSales();
+    const toiletPaperSales = getToiletPaperSales();
 
     const calculateTotals = (sales) => ({
       totalQuantity: sales.reduce((sum, sale) => sum + parseInt(sale.product.quantity || 0), 0),
@@ -253,12 +269,13 @@ const SalesPage = () => {
         </button>
       </div>
 
+      {/* Straws Sales Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions - Straws</h2>
-              <p className="text-slate-600">Complete record of all straws sales activities</p>
+              <p className="text-slate-600">Complete record of all straws sales activities ({getStrawsSales().length} records)</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -270,7 +287,7 @@ const SalesPage = () => {
         </div>
         <div className="p-6">
           <SalesTable
-            sales={sales.filter(s => products.find(p => p.id === s.product.productId)?.name.toLowerCase() === "straws")}
+            sales={getStrawsSales()}
             products={products}
             globalFilter={globalFilter}
             setGlobalFilter={setGlobalFilter}
@@ -281,12 +298,13 @@ const SalesPage = () => {
         </div>
       </div>
 
+      {/* Toilet Papers Sales Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-800 mb-2">Sales Transactions - Toilet Papers</h2>
-              <p className="text-slate-600">Complete record of all toilet paper sales activities</p>
+              <p className="text-slate-600">Complete record of all toilet paper sales activities ({getToiletPaperSales().length} records)</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -298,7 +316,7 @@ const SalesPage = () => {
         </div>
         <div className="p-6">
           <SalesTable
-            sales={sales.filter(s => products.find(p => p.id === s.product.productId)?.name.toLowerCase() === "toilet papers")}
+            sales={getToiletPaperSales()}
             products={products}
             globalFilter={globalFilter}
             setGlobalFilter={setGlobalFilter}
