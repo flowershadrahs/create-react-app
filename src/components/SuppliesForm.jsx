@@ -1,4 +1,3 @@
-// src/components/SuppliesForm.jsx
 import React, { useState, useEffect } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
@@ -18,32 +17,9 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     return () => unsubscribe();
   }, []);
 
-  const getAvailableSupplyTypes = () => {
-    if (!newSupply.productId) return [];
-    
-    const selectedProduct = products.find(p => p.id === newSupply.productId);
-    if (!selectedProduct) return [];
-    
-    return [
-      { value: "kaveera", label: "Kaveera (K)" },
-      { value: "box", label: "Box (B)" }
-    ];
-  };
-
-  useEffect(() => {
-    const availableTypes = getAvailableSupplyTypes();
-    if (availableTypes.length > 0 && !availableTypes.find(type => type.value === newSupply.supplyType)) {
-      setNewSupply(prev => ({ ...prev, supplyType: availableTypes[0]?.value || "" }));
-    }
-  }, [newSupply.productId]);
-
   const handleAddSupply = async (e) => {
     e.preventDefault();
-    if (!newSupply.productId.trim() || !newSupply.supplyType || !newSupply.quantity || !user) {
-      setError("Please fill in all required fields");
-      setIsSubmitting(false);
-      return;
-    }
+    if (!newSupply.productId.trim() || !newSupply.supplyType || !newSupply.quantity || !user) return;
     
     setIsSubmitting(true);
     setError("");
@@ -51,7 +27,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     try {
       await addDoc(collection(db, `users/${user.uid}/supplies`), {
         productId: newSupply.productId,
-        supplyType: newSupply.supplyType.toLowerCase(), // Normalize case
+        supplyType: newSupply.supplyType,
         quantity: parseInt(newSupply.quantity),
         date: new Date(newSupply.date),
         createdAt: new Date(),
@@ -62,11 +38,10 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
     } catch (err) {
       console.error("Error adding supply:", err);
       setError("Failed to add supply. Please try again.");
+    } finally {
       setIsSubmitting(false);
     }
   };
-
-  const availableSupplyTypes = getAvailableSupplyTypes();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -110,11 +85,8 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               >
                 <option value="" disabled>Select supply type</option>
-                {availableSupplyTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
+                <option value="Kaveera">Kaveera (K)</option>
+                <option value="Box">Box (B)</option>
               </select>
             </div>
             
@@ -154,7 +126,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
           </form>
         </div>
         
-        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shrink-0">
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shr ink-0">
           <button
             type="button"
             onClick={() => {
