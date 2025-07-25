@@ -4,7 +4,7 @@ import { db, auth } from "../../firebase";
 import { X, Package, User, Calculator, CheckCircle2 } from "lucide-react";
 import AutocompleteInput from "../AutocompleteInput";
 
-const SalesForm = ({ sale, onClose, clients, products }) => {
+const SalesForm = ({ sale, onClose, clients, products, supplies }) => {
   const [formData, setFormData] = useState({
     client: sale?.client || "",
     productId: sale?.product?.productId || products.find(p => p.name.toLowerCase() === "straws")?.id || "",
@@ -35,6 +35,48 @@ const SalesForm = ({ sale, onClose, clients, products }) => {
       }
     }
   }, [products, formData.productId]);
+
+  // Get available supply types for the selected product
+  const getAvailableSupplyTypes = () => {
+    if (!formData.productId) return [];
+    
+    const selectedProduct = products.find(p => p.id === formData.productId);
+    if (!selectedProduct) return [];
+    
+    // Check if it's toilet paper
+    if (selectedProduct.name.toLowerCase().includes('toilet')) {
+      return [
+        { value: "S", label: "S" },
+        { value: "P", label: "P" },
+        { value: "W", label: "W" }
+      ];
+    }
+    
+    // For straws and other products, get supply types from supplies collection
+    const productSupplies = supplies.filter(supply => supply.productId === formData.productId);
+    const uniqueSupplyTypes = [...new Set(productSupplies.map(supply => supply.supplyType))];
+    
+    // If no supplies found, default to standard options
+    if (uniqueSupplyTypes.length === 0) {
+      return [
+        { value: "Kaveera", label: "Kaveera (K)" },
+        { value: "Box", label: "Box (B)" }
+      ];
+    }
+    
+    return uniqueSupplyTypes.map(type => ({
+      value: type,
+      label: type === "Kaveera" ? "Kaveera (K)" : type === "Box" ? "Box (B)" : type
+    }));
+  };
+
+  // Reset supply type when product changes
+  useEffect(() => {
+    const availableTypes = getAvailableSupplyTypes();
+    if (availableTypes.length > 0 && !availableTypes.find(type => type.value === formData.supplyType)) {
+      setFormData(prev => ({ ...prev, supplyType: availableTypes[0].value }));
+    }
+  }, [formData.productId]);
 
   const subtotal = (parseFloat(formData.quantity) || 0) * (parseFloat(formData.unitPrice) || 0);
   const totalAmount = subtotal - (parseFloat(formData.discount) || 0);
@@ -180,6 +222,8 @@ const SalesForm = ({ sale, onClose, clients, products }) => {
     }
   };
 
+  const availableSupplyTypes = getAvailableSupplyTypes();
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
@@ -229,8 +273,11 @@ const SalesForm = ({ sale, onClose, clients, products }) => {
               className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="" disabled>Select supply type</option>
-              <option value="Kaveera">Kaveera (K)</option>
-              <option value="Box">Box (B)</option>
+              {availableSupplyTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
             </select>
           </div>
 
