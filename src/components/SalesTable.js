@@ -9,18 +9,28 @@ import {
 } from "@tanstack/react-table";
 import { format, startOfDay, endOfDay, isWithinInterval, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { Edit, Trash2, Search, X, ChevronUp, ChevronDown } from "lucide-react";
-import { collection, deleteDoc, doc, query, where, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, deleteDoc, doc, query, where, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebase";
 
-const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale, setShowForm }) => {
-  const [sales, setSales] = useState([]);
-  const [products, setProducts] = useState([]);
+const SalesTable = ({ 
+  sales: propSales, 
+  products: propProducts, 
+  globalFilter, 
+  setGlobalFilter, 
+  dateFilter, 
+  setEditingSale, 
+  setShowForm 
+}) => {
   const [user, setUser] = useState(null);
   const [sorting, setSorting] = useState([{ id: 'date', desc: true }]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 25,
   });
+
+  // Use props data instead of fetching independently
+  const sales = propSales || [];
+  const products = propProducts || [];
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
@@ -30,45 +40,7 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      const salesQuery = query(collection(db, `users/${user.uid}/sales`));
-      const unsubscribeSales = onSnapshot(
-        salesQuery,
-        (snapshot) => {
-          const salesData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setSales(salesData);
-        },
-        (err) => {
-          console.error("Error fetching sales:", err);
-        }
-      );
-
-      const productsQuery = query(collection(db, `users/${user.uid}/products`));
-      const unsubscribeProducts = onSnapshot(
-        productsQuery,
-        (snapshot) => {
-          const productsData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setProducts(productsData);
-        },
-        (err) => {
-          console.error("Error fetching products:", err);
-        }
-      );
-
-      return () => {
-        unsubscribeSales();
-        unsubscribeProducts();
-      };
-    }
-  }, [user]);
-
+  // Remove independent data fetching since we're using props
   const filteredSales = useMemo(() => {
     if (!sales) return [];
     
@@ -90,6 +62,11 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         startDate = startOfMonth(now);
         endDate = endOfMonth(now);
         break;
+      case 'specific':
+        if (!dateFilter.startDate) return sales;
+        startDate = startOfDay(parseISO(dateFilter.startDate));
+        endDate = endOfDay(parseISO(dateFilter.startDate));
+        break;
       case 'custom':
         if (!dateFilter.startDate || !dateFilter.endDate) return sales;
         startDate = startOfDay(parseISO(dateFilter.startDate));
@@ -101,7 +78,7 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
     
     return sales.filter(sale => {
       if (!sale.date) return false;
-      const saleDate = sale.date.toDate();
+      const saleDate = sale.date.toDate ? sale.date.toDate() : new Date(sale.date);
       return isWithinInterval(saleDate, { start: startDate, end: endDate });
     });
   }, [sales, dateFilter]);
@@ -146,6 +123,15 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         cell: info => (
           <div className="text-gray-800">
             {products.find(prod => prod.id === info.getValue()?.productId)?.name || "-"}
+          </div>
+        ),
+      },
+      {
+        header: "Supply Type",
+        accessorKey: "product",
+        cell: info => (
+          <div className="text-gray-600 text-sm">
+            {info.getValue()?.supplyType || "-"}
           </div>
         ),
       },
@@ -208,11 +194,20 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         ),
       },
       {
+        header: "Outstanding",
+        accessorFn: row => (row.totalAmount || 0) - (row.amountPaid || 0),
+        cell: info => (
+          <div className={`font-mono text-sm ${info.getValue() > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            UGX {info.getValue().toLocaleString()}
+          </div>
+        ),
+      },
+      {
         header: "Date",
         accessorKey: "date",
         cell: info => (
           <span className="text-gray-500 text-sm">
-            {info.getValue() ? format(info.getValue().toDate(), 'MMM dd, yyyy') : '-'}
+            {info.getValue() ? format(info.getValue().toDate ? info.getValue().toDate() : new Date(info.getValue()), 'MMM dd, yyyy') : '-'}
           </span>
         ),
         sortingFn: (rowA, rowB) => {
@@ -260,8 +255,12 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
       const client = row.getValue('client')?.toLowerCase() || '';
       const product = products.find(prod => prod.id === row.getValue('product')?.productId)?.name.toLowerCase() || '';
       const paymentStatus = row.getValue('paymentStatus')?.toLowerCase() || '';
+      const supplyType = row.getValue('product')?.supplyType?.toLowerCase() || '';
       const searchTerm = filterValue.toLowerCase();
-      return client.includes(searchTerm) || product.includes(searchTerm) || paymentStatus.includes(searchTerm);
+      return client.includes(searchTerm) || 
+             product.includes(searchTerm) || 
+             paymentStatus.includes(searchTerm) ||
+             supplyType.includes(searchTerm);
     },
     state: {
       globalFilter,
@@ -300,6 +299,10 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         return 'This Week';
       case 'month':
         return 'This Month';
+      case 'specific':
+        return dateFilter.startDate 
+          ? format(parseISO(dateFilter.startDate), 'MMM dd, yyyy')
+          : 'Specific Date';
       case 'custom':
         return dateFilter.startDate && dateFilter.endDate 
           ? `${format(parseISO(dateFilter.startDate), 'MMM dd')} - ${format(parseISO(dateFilter.endDate), 'MMM dd')}`
@@ -315,7 +318,7 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by client, product, or status..."
+          placeholder="Search by client, product, supply type, or status..."
           value={globalFilter ?? ""}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all duration-200"
@@ -397,6 +400,9 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     -
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                    -
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-center text-gray-900">
                     {totals.totalQuantity.toLocaleString()}
                   </td>
@@ -414,6 +420,9 @@ const SalesTable = ({ globalFilter, setGlobalFilter, dateFilter, setEditingSale,
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700">
                     UGX {totals.totalPaid.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
+                    UGX {totals.outstandingBalance.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                     -
