@@ -122,35 +122,98 @@ const SalesPage = () => {
   };
 
   const getSupplySummary = () => {
-    const filteredSales = getFilteredSales();
-    const filteredSupplies = getFilteredSupplies();
-    const strawsProduct = products?.find(p => p.name.toLowerCase().includes("straw"));
-    const toiletPaperProduct = products?.find(p => p.name.toLowerCase().includes("toilet"));
-
-    const supplyTypes = [
-      { type: "kaveera", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
-      { type: "box", productId: strawsProduct?.id, product: strawsProduct?.name || "Straws" },
-      { type: "60s", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
-      { type: "20p", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
-      { type: "90w", productId: toiletPaperProduct?.id, product: toiletPaperProduct?.name || "Toilet Papers" },
-    ];
-
-    return supplyTypes.map(({ type, productId, product }) => {
-      const totalSupplied = filteredSupplies
-        .filter(s => s.supplyType.toLowerCase() === type.toLowerCase() && s.productId === productId)
-        .reduce((sum, supply) => sum + parseInt(supply.quantity || 0), 0);
-      const totalSold = filteredSales
-        .filter(s => s.product.supplyType.toLowerCase() === type.toLowerCase() && s.product.productId === productId)
-        .reduce((sum, sale) => sum + parseInt(sale.product.quantity || 0), 0);
-      return {
-        supplyType: type,
-        product,
-        totalSupplied,
-        totalSold,
-        balance: totalSupplied - totalSold,
+  const filteredSales = getFilteredSales();
+  const filteredSupplies = getFilteredSupplies();
+  
+  // Get all unique supply types from both supplies and sales
+  const allSupplyTypes = new Set();
+  
+  // Add supply types from supplies collection
+  filteredSupplies.forEach(supply => {
+    if (supply.supplyType) {
+      allSupplyTypes.add(supply.supplyType.toLowerCase());
+    }
+  });
+  
+  // Add supply types from sales collection
+  filteredSales.forEach(sale => {
+    if (sale.product?.supplyType) {
+      allSupplyTypes.add(sale.product.supplyType.toLowerCase());
+    }
+  });
+  
+  // Convert to array and create summary for each supply type
+  const summaries = Array.from(allSupplyTypes).map(supplyType => {
+    // Find product info for this supply type (from supplies or sales)
+    let productInfo = null;
+    
+    // First try to get product info from supplies
+    const supplyWithProduct = filteredSupplies.find(s => 
+      s.supplyType?.toLowerCase() === supplyType && s.productId
+    );
+    
+    if (supplyWithProduct) {
+      const product = products?.find(p => p.id === supplyWithProduct.productId);
+      productInfo = {
+        productId: supplyWithProduct.productId,
+        productName: product?.name || 'Unknown Product'
       };
-    }).filter(summary => summary.totalSupplied > 0 || summary.totalSold > 0);
-  };
+    } else {
+      // If not found in supplies, try to get from sales
+      const saleWithProduct = filteredSales.find(s => 
+        s.product?.supplyType?.toLowerCase() === supplyType && s.product?.productId
+      );
+      
+      if (saleWithProduct) {
+        const product = products?.find(p => p.id === saleWithProduct.product.productId);
+        productInfo = {
+          productId: saleWithProduct.product.productId,
+          productName: product?.name || 'Unknown Product'
+        };
+      }
+    }
+    
+    // If we still don't have product info, skip this supply type
+    if (!productInfo) {
+      return null;
+    }
+    
+    // Calculate total supplied for this supply type and product
+    const totalSupplied = filteredSupplies
+      .filter(supply => 
+        supply.supplyType?.toLowerCase() === supplyType && 
+        supply.productId === productInfo.productId
+      )
+      .reduce((sum, supply) => sum + parseInt(supply.quantity || 0), 0);
+    
+    // Calculate total sold for this supply type and product
+    const totalSold = filteredSales
+      .filter(sale => 
+        sale.product?.supplyType?.toLowerCase() === supplyType && 
+        sale.product?.productId === productInfo.productId
+      )
+      .reduce((sum, sale) => sum + parseInt(sale.product?.quantity || 0), 0);
+    
+    return {
+      supplyType: supplyType.charAt(0).toUpperCase() + supplyType.slice(1), // Capitalize first letter
+      product: productInfo.productName,
+      productId: productInfo.productId,
+      totalSupplied,
+      totalSold,
+      balance: totalSupplied - totalSold,
+    };
+  }).filter(summary => 
+    summary !== null && (summary.totalSupplied > 0 || summary.totalSold > 0)
+  );
+  
+  // Sort by product name and then by supply type for better organization
+  return summaries.sort((a, b) => {
+    if (a.product !== b.product) {
+      return a.product.localeCompare(b.product);
+    }
+    return a.supplyType.localeCompare(b.supplyType);
+  });
+};
 
   const getSalesSummary = () => {
     const strawsSales = getStrawsSales();
