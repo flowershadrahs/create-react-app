@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   useReactTable, 
   getCoreRowModel, 
@@ -27,6 +27,7 @@ const SalesTable = ({
     pageIndex: 0,
     pageSize: 25,
   });
+  const [isDeleting, setIsDeleting] = useState(null); // Track which sale is being deleted
 
   // Use props data instead of fetching independently
   const sales = propSales || [];
@@ -39,6 +40,46 @@ const SalesTable = ({
 
     return () => unsubscribe();
   }, []);
+
+  // Memoize the delete handler
+  const handleDeleteSale = useCallback(async (id) => {
+    if (!user) {
+      alert("You must be logged in to delete sales.");
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to delete this sale? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsDeleting(id);
+    
+    try {
+      console.log(`Attempting to delete sale with ID: ${id}`);
+      
+      // Delete the sale document
+      await deleteDoc(doc(db, `users/${user.uid}/sales`, id));
+      console.log("Sale deleted successfully");
+      
+      // Delete associated debts
+      const debtsQuery = query(
+        collection(db, `users/${user.uid}/debts`),
+        where("saleId", "==", id)
+      );
+      const querySnapshot = await getDocs(debtsQuery);
+      
+      const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      
+      console.log(`Deleted ${querySnapshot.docs.length} associated debt records`);
+      
+    } catch (err) {
+      console.error("Error deleting sale:", err);
+      alert(`Failed to delete sale: ${err.message}. Please try again.`);
+    } finally {
+      setIsDeleting(null);
+    }
+  }, [user]);
 
   // Remove independent data fetching since we're using props
   const filteredSales = useMemo(() => {
@@ -218,30 +259,41 @@ const SalesTable = ({
       },
       {
         header: "Actions",
-        cell: info => (
-          <div className="flex gap-1">
-            <button
-              onClick={() => {
-                setEditingSale(info.row.original);
-                setShowForm(true);
-              }}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-              title="Edit sale"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => handleDeleteSale(info.row.original.id)}
-              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-              title="Delete sale"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ),
+        cell: info => {
+          const saleId = info.row.original.id;
+          const isCurrentlyDeleting = isDeleting === saleId;
+          
+          return (
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  setEditingSale(info.row.original);
+                  setShowForm(true);
+                }}
+                disabled={isCurrentlyDeleting}
+                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit sale"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteSale(saleId)}
+                disabled={isCurrentlyDeleting}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  isCurrentlyDeleting
+                    ? 'text-gray-400 cursor-not-allowed opacity-50'
+                    : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                }`}
+                title={isCurrentlyDeleting ? "Deleting..." : "Delete sale"}
+              >
+                <Trash2 className={`w-4 h-4 ${isCurrentlyDeleting ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          );
+        },
       },
     ],
-    [products, setEditingSale, setShowForm]
+    [products, setEditingSale, setShowForm, handleDeleteSale, isDeleting]
   );
 
   const table = useReactTable({
@@ -271,25 +323,6 @@ const SalesTable = ({
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
   });
-
-  const handleDeleteSale = async (id) => {
-    if (window.confirm("Are you sure you want to delete this sale? This action cannot be undone.") && user) {
-      try {
-        await deleteDoc(doc(db, `users/${user.uid}/sales`, id));
-        const debtsQuery = query(
-          collection(db, `users/${user.uid}/debts`),
-          where("saleId", "==", id)
-        );
-        const querySnapshot = await getDocs(debtsQuery);
-        querySnapshot.forEach(async (doc) => {
-          await deleteDoc(doc.ref);
-        });
-      } catch (err) {
-        console.error("Error deleting sale:", err);
-        alert("Failed to delete sale. Please try again.");
-      }
-    }
-  };
 
   const getDateFilterLabel = () => {
     switch (dateFilter.type) {
