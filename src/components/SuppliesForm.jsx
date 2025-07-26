@@ -82,11 +82,14 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
                 value={newSupply.supplyType}
                 onChange={(e) => setNewSupply({ ...newSupply, supplyType: e.target.value })}
                 required
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
               >
                 <option value="" disabled>Select supply type</option>
                 <option value="Kaveera">Kaveera (K)</option>
                 <option value="Box">Box (B)</option>
+                <option value="P">P</option>
+                <option value="S">S</option>
+                <option value="W">W</option>
               </select>
             </div>
             
@@ -101,7 +104,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
                 required
                 min="1"
                 placeholder="Enter quantity"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
               />
             </div>
 
@@ -114,7 +117,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
                 value={newSupply.date}
                 onChange={(e) => setNewSupply({ ...newSupply, date: e.target.value })}
                 required
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
               />
             </div>
 
@@ -126,7 +129,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
           </form>
         </div>
         
-        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shr ink-0">
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-neutral-200 flex-shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -140,7 +143,7 @@ const SuppliesForm = ({ newSupply, setNewSupply, setShowSupplyForm, products }) 
           <button
             onClick={handleAddSupply}
             disabled={!newSupply.productId || !newSupply.supplyType || !newSupply.quantity || isSubmitting}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:bg-neutral-400 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-orange-800 text-white rounded-lg hover:bg-orange-900 disabled:bg-neutral-400 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? "Adding..." : "Add Supply"}
           </button>
