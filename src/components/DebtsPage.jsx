@@ -34,19 +34,16 @@ const DebtsPage = () => {
     }
   };
 
-  // Filter debts for straws
   const strawDebts = debts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
     return product?.name.toLowerCase().includes('straw');
   });
 
-  // Filter debts for toilet paper
   const toiletPaperDebts = debts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
     return product?.name.toLowerCase().includes('toilet paper');
   });
 
-  // Calculate totals
   const strawTotal = strawDebts.reduce((sum, debt) => sum + (debt.amount || 0), 0);
   const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (debt.amount || 0), 0);
 
@@ -56,7 +53,7 @@ const DebtsPage = () => {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-2">
+      <div className="bg-red-50 border border-red-200 text-red-800 px-2 py-2 rounded-xl flex items-center gap-2">
         {error}
       </div>
     );
@@ -67,8 +64,8 @@ const DebtsPage = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-[100vw] overflow-x-auto bg-white p-6">
-      <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
+    <div className="space-y-6 w-full bg-white p-2">
+      <div className="bg-slate-50 rounded-2xl p-2 border border-slate-200">
         <h1 className="text-3xl lg:text-4xl font-bold text-slate-800 tracking-tight">
           Debts Management
         </h1>
@@ -90,7 +87,7 @@ const DebtsPage = () => {
 
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Straw Debts</h2>
+          <h2 className="text-2xl font-semibold">Straw Debts</h2>
           <DebtTable
             debts={strawDebts}
             sales={sales}
@@ -106,7 +103,7 @@ const DebtsPage = () => {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Toilet Paper Debts</h2>
+          <h2 className="text-2xl font-semibold">Toilet Paper Debts</h2>
           <DebtTable
             debts={toiletPaperDebts}
             sales={sales}
@@ -127,7 +124,7 @@ const DebtsPage = () => {
           setEditingDebt(null);
           setShowForm(true);
         }}
-        className="fixed bottom-20 sm:bottom-24 right-6 bg-orange-600 text-white rounded-full p-4 shadow-lg hover:bg-orange-700 transition-all duration-200 hover:scale-110 z-[100]"
+        className="fixed bottom-20 sm:bottom-24 right-2 bg-orange-600 text-white rounded-full p-4 shadow-lg hover:bg-orange-700 transition-all duration-200 hover:scale-110 z-[100]"
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -139,7 +136,7 @@ const DebtsPage = () => {
       />
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 overflow-y-auto">
           <div className="w-full max-w-lg my-8">
             <DebtForm
               debt={editingDebt}
@@ -153,7 +150,7 @@ const DebtsPage = () => {
       )}
 
       {showSalesForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 overflow-y-auto">
           <div className="w-full max-w-lg my-8">
             <SalesForm
               sale={editingSale}
