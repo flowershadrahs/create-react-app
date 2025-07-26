@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { Plus, User, Package, Truck } from "lucide-react";
 import AutocompleteInput from "./AutocompleteInput";
 import SalesForm from "./sales/SalesForm";
@@ -7,7 +7,7 @@ import DateFilter from "./DateFilter";
 import ClientForm from "./ClientForm";
 import ProductForm from "./ProductForm";
 import SalesTable from "./SalesTable";
-import { startOfDay, endOfDay, isWithinInterval, parseISO } from "date-fns";
+import { startOfDay, endOfDay, isWithinInterval, parseISO, format } from "date-fns";
 import { DataContext } from "../DataContext";
 
 const SalesPage = () => {
@@ -37,6 +37,40 @@ const SalesPage = () => {
     quantity: "",
     date: new Date().toISOString().split("T")[0],
   });
+
+  // Function to get the most recent date with sales records
+  const getMostRecentSalesDate = () => {
+    if (!sales || sales.length === 0) {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    const salesDates = sales
+      .map(sale => {
+        if (!sale.date) return null;
+        const saleDate = sale.date.toDate ? sale.date.toDate() : new Date(sale.date);
+        return saleDate;
+      })
+      .filter(date => date !== null)
+      .sort((a, b) => b - a); // Sort in descending order (most recent first)
+
+    if (salesDates.length === 0) {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    return format(salesDates[0], 'yyyy-MM-dd');
+  };
+
+  // Set the default date to the most recent sales date when sales data is loaded
+  useEffect(() => {
+    if (sales && sales.length > 0) {
+      const mostRecentDate = getMostRecentSalesDate();
+      setDateFilter(prev => ({
+        ...prev,
+        startDate: mostRecentDate,
+        endDate: mostRecentDate,
+      }));
+    }
+  }, [sales]); // Only run when sales data changes
 
   const getFilteredSupplies = () => {
     let filtered = supplies || [];
