@@ -1,17 +1,18 @@
+// DateFilter.jsx
 import React from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay } from "date-fns";
 import { Calendar, X, Filter } from "lucide-react";
 
 const DateFilter = ({ dateFilter, setDateFilter, showDateFilter, setShowDateFilter }) => {
-  const handleDateFilterChange = (type) => {
+  const handleDateFilterChange = (type, specificDate = null) => {
     const today = new Date().toISOString().split("T")[0];
     setDateFilter(prev => ({
       ...prev,
       type,
-      startDate: type === 'custom' ? prev.startDate : (type === 'today' ? today : ''),
-      endDate: type === 'custom' ? prev.endDate : (type === 'today' ? today : '')
+      startDate: type === 'custom' ? prev.startDate : (type === 'specific' ? specificDate : type === 'today' ? today : ''),
+      endDate: type === 'custom' ? prev.endDate : (type === 'specific' ? specificDate : type === 'today' ? today : '')
     }));
-    if (type !== 'custom') {
+    if (type !== 'custom' && type !== 'specific') {
       setShowDateFilter(false);
     }
   };
@@ -28,6 +29,10 @@ const DateFilter = ({ dateFilter, setDateFilter, showDateFilter, setShowDateFilt
         return dateFilter.startDate && dateFilter.endDate 
           ? `${format(parseISO(dateFilter.startDate), 'MMM dd')} - ${format(parseISO(dateFilter.endDate), 'MMM dd')}`
           : 'Custom Range';
+      case 'specific':
+        return dateFilter.startDate 
+          ? format(parseISO(dateFilter.startDate), 'MMM dd, yyyy')
+          : 'Specific Date';
       default:
         return 'All Time';
     }
@@ -43,6 +48,8 @@ const DateFilter = ({ dateFilter, setDateFilter, showDateFilter, setShowDateFilt
         return 'bg-purple-500 hover:bg-purple-600';
       case 'custom':
         return 'bg-orange-500 hover:bg-orange-600';
+      case 'specific':
+        return 'bg-teal-500 hover:bg-teal-600';
       default:
         return 'bg-slate-500 hover:bg-slate-600';
     }
@@ -143,6 +150,17 @@ const DateFilter = ({ dateFilter, setDateFilter, showDateFilter, setShowDateFilt
                 Custom Date Range
               </button>
               
+              <button
+                onClick={() => handleDateFilterChange('specific')}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 mb-4 ${
+                  dateFilter.type === 'specific'
+                    ? 'bg-teal-100 text-teal-800 shadow-md border-2 border-teal-300'
+                    : 'bg-slate-50 text-slate-600 hover:bg-teal-50 border border-slate-200'
+                }`}
+              >
+                Specific Date
+              </button>
+              
               {dateFilter.type === 'custom' && (
                 <div className="space-y-4 bg-slate-50 rounded-xl p-4">
                   <div className="space-y-2">
@@ -161,6 +179,20 @@ const DateFilter = ({ dateFilter, setDateFilter, showDateFilter, setShowDateFilt
                       value={dateFilter.endDate}
                       onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
                       className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white transition-all duration-200"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {dateFilter.type === 'specific' && (
+                <div className="space-y-4 bg-slate-50 rounded-xl p-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700">Select Date</label>
+                    <input
+                      type="date"
+                      value={dateFilter.startDate}
+                      onChange={(e) => handleDateFilterChange('specific', e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white transition-all duration-200"
                     />
                   </div>
                 </div>
