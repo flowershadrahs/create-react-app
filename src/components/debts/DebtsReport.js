@@ -7,9 +7,19 @@ import toast from "react-hot-toast";
 import logo from "../logo.jpg";
 import { DataContext } from '../../DataContext';
 
-const DebtsReport = () => {
+const DebtsReport = ({ dateFilter }) => {
   const { user, debts, clients, products, loading, error } = useContext(DataContext);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Filter debts based on dateFilter
+  const filteredDebts = debts.filter(debt => {
+    if (dateFilter.type === 'all') return true;
+    const debtDate = debt.createdAt?.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt);
+    if (dateFilter.type === 'range' && dateFilter.startDate && dateFilter.endDate) {
+      return debtDate >= new Date(dateFilter.startDate) && debtDate <= new Date(dateFilter.endDate);
+    }
+    return true;
+  });
 
   const generateDebtsReport = async () => {
     if (isGenerating || !user) return;
@@ -25,7 +35,7 @@ const DebtsReport = () => {
       const background = [248, 250, 252];
       const border = [226, 232, 240];
       const footerSpace = 30;
-      const tableWidth = pageWidth - 30; // Consistent table width
+      const tableWidth = pageWidth - 30;
 
       // Load logo
       let logoBase64 = null;
@@ -176,7 +186,8 @@ const DebtsReport = () => {
           return startY + 30;
         }
 
-        const sectionColor = sectionType === 'debts' ? [255, 159, 64] : [59, 130, 246]; // Orange for debts, blue for payments
+        const sectionColor = sectionType === 'debts' ? [255, 159, 64] : 
+                           sectionType === 'strawPayments' ? [59, 130, 246] : [16, 185, 129]; // Orange for debts, blue for straw payments, green for toilet paper payments
         const filteredRows = rows.filter(row => 
           row && 
           Object.values(row).some(cell => 
@@ -231,18 +242,17 @@ const DebtsReport = () => {
       };
 
       // Filter debts by product
-      const strawDebts = debts.filter(debt => {
+      const strawDebts = filteredDebts.filter(debt => {
         const product = products.find(p => p.id === debt.productId);
         return product?.name === 'Straws';
       });
 
-      const toiletPaperDebts = debts.filter(debt => {
+      const toiletPaperDebts = filteredDebts.filter(debt => {
         const product = products.find(p => p.id === debt.productId);
         return product?.name === 'Toilet Paper';
       });
 
       // Debts paid today
-      const today = new Date();
       const strawDebtsPaidToday = strawDebts.filter(debt => 
         debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
       );
@@ -256,9 +266,7 @@ const DebtsReport = () => {
         return {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
-          createdAt: debt.createdAt ? format(debt.createdAt.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt), "MMM dd, yyyy") : "-",
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
-          notes: debt.notes || "-"
         };
       });
 
@@ -267,9 +275,7 @@ const DebtsReport = () => {
         return {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
-          createdAt: debt.createdAt ? format(debt.createdAt.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt), "MMM dd, yyyy") : "-",
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
-          notes: debt.notes || "-"
         };
       });
 
@@ -312,9 +318,7 @@ const DebtsReport = () => {
         strawDebtsData.push({
           client: "TOTAL",
           debtBalance: strawTotal.toLocaleString(),
-          createdAt: "",
           updatedAt: "",
-          notes: ""
         });
       }
 
@@ -322,9 +326,7 @@ const DebtsReport = () => {
         toiletPaperDebtsData.push({
           client: "TOTAL",
           debtBalance: toiletPaperTotal.toLocaleString(),
-          createdAt: "",
           updatedAt: "",
-          notes: ""
         });
       }
 
@@ -405,36 +407,6 @@ const DebtsReport = () => {
 
       yPosition += 130;
 
-      // Add Straws debts table
-      yPosition = addTable(
-        "Outstanding Straws Debts",
-        [
-          { header: "CLIENT", dataKey: "client" },
-          { header: "OUTSTANDING DEBT (UGX)", dataKey: "debtBalance" },
-          { header: "CREATED", dataKey: "createdAt" },
-          { header: "UPDATED", dataKey: "updatedAt" },
-          { header: "NOTES", dataKey: "notes" }
-        ],
-        strawDebtsData,
-        yPosition,
-        'debts'
-      );
-
-      // Add Toilet Paper debts table
-      yPosition = addTable(
-        "Outstanding Toilet Paper Debts",
-        [
-          { header: "CLIENT", dataKey: "client" },
-          { header: "OUTSTANDING DEBT (UGX)", dataKey: "debtBalance" },
-          { header: "CREATED", dataKey: "createdAt" },
-          { header: "UPDATED", dataKey: "updatedAt" },
-          { header: "NOTES", dataKey: "notes" }
-        ],
-        toiletPaperDebtsData,
-        yPosition,
-        'debts'
-      );
-
       // Add Straws debts paid today table
       yPosition = addTable(
         "Straws Debts Paid Today",
@@ -445,7 +417,7 @@ const DebtsReport = () => {
         ],
         strawPaidTodayData,
         yPosition,
-        'payments'
+        'strawPayments'
       );
 
       // Add Toilet Paper debts paid today table
@@ -458,7 +430,33 @@ const DebtsReport = () => {
         ],
         toiletPaperPaidTodayData,
         yPosition,
-        'payments'
+        'toiletPaperPayments'
+      );
+
+      // Add Straws debts table
+      yPosition = addTable(
+        "Outstanding Straws Debts",
+        [
+          { header: "CLIENT", dataKey: "client" },
+          { header: "DEBTS (UGX)", dataKey: "debtBalance" },
+          { header: "UPDATED", dataKey: "updatedAt" }
+        ],
+        strawDebtsData,
+        yPosition,
+        'debts'
+      );
+
+      // Add Toilet Paper debts table
+      yPosition = addTable(
+        "Outstanding Toilet Paper Debts",
+        [
+          { header: "CLIENT", dataKey: "client" },
+          { header: "DEBTS (UGX)", dataKey: "debtBalance" },
+          { header: "UPDATED", dataKey: "updatedAt" }
+        ],
+        toiletPaperDebtsData,
+        yPosition,
+        'debts'
       );
 
       // Add footers to all pages
@@ -506,12 +504,12 @@ const DebtsReport = () => {
   }
 
   // Calculate totals for display
-  const strawDebts = debts.filter(debt => {
+  const strawDebts = filteredDebts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
     return product?.name === 'Straws';
   });
 
-  const toiletPaperDebts = debts.filter(debt => {
+  const toiletPaperDebts = filteredDebts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
     return product?.name === 'Toilet Paper';
   });
@@ -553,7 +551,7 @@ const DebtsReport = () => {
       {/* Generate Button */}
       <button
         onClick={generateDebtsReport}
-        disabled={isGenerating || debts.length === 0}
+        disabled={isGenerating || filteredDebts.length === 0}
         className="w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isGenerating ? (
@@ -565,13 +563,13 @@ const DebtsReport = () => {
           <>
             <Download className="w-5 h-5" />
             <span>
-              {debts.length === 0 ? 'No Debts to Report' : 'Generate Debts Report'}
+              {filteredDebts.length === 0 ? 'No Debts to Report' : 'Generate Debts Report'}
             </span>
           </>
         )}
       </button>
 
-      {debts.length === 0 && (
+      {filteredDebts.length === 0 && (
         <p className="text-center text-slate-500 mt-4 text-sm">
           No outstanding debts found. Add some debts to generate a report.
         </p>
