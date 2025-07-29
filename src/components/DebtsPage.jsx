@@ -8,7 +8,7 @@ import DebtTable from './debts/DebtTable';
 import SummaryCards from './debts/SummaryCards';
 import SearchFilter from './debts/SearchFilter';
 import DateFilter from './debts/DateFilter';
-import DebtsReport from './DebtsReport';
+import DebtsReport from './debts/DebtsReport';
 import { DataContext } from '../DataContext';
 
 const DebtsPage = () => {
