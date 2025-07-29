@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Download } from "lucide-react";
 import toast from "react-hot-toast";
 import logo from "../logo.jpg";
-import { DataContext } from '../DataContext';
+import { DataContext } from '../../DataContext';
 
 const DebtsReport = () => {
   const { user, debts, clients, products, loading, error } = useContext(DataContext);
