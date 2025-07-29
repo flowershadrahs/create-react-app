@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import { format } from "date-fns";
+import { format, isToday } from "date-fns";
 import { Download } from "lucide-react";
 import toast from "react-hot-toast";
 import logo from "../logo.jpg";
@@ -25,6 +25,7 @@ const DebtsReport = () => {
       const background = [248, 250, 252];
       const border = [226, 232, 240];
       const footerSpace = 30;
+      const tableWidth = pageWidth - 30; // Consistent table width
 
       // Load logo
       let logoBase64 = null;
@@ -169,15 +170,13 @@ const DebtsReport = () => {
         doc.text(title, 15, startY);
 
         if (!rows || rows.length === 0) {
-          doc.setFontSize(11);
+          doc.setFontSize(13);
           doc.setTextColor(...secondary);
-          doc.text("No outstanding debts for this product", 15, startY + 15);
+          doc.text("No data available for this section", 15, startY + 15);
           return startY + 30;
         }
 
-        const sectionColor = [255, 159, 64]; // Orange for debts
-        const tableWidth = pageWidth - 30;
-
+        const sectionColor = sectionType === 'debts' ? [255, 159, 64] : [59, 130, 246]; // Orange for debts, blue for payments
         const filteredRows = rows.filter(row => 
           row && 
           Object.values(row).some(cell => 
@@ -193,7 +192,7 @@ const DebtsReport = () => {
           headStyles: {
             fillColor: sectionColor,
             textColor: [255, 255, 255],
-            fontSize: 12,
+            fontSize: 14,
             fontStyle: "bold",
             halign: "left",
             cellPadding: { top: 7, right: 5, bottom: 7, left: 5 },
@@ -201,7 +200,7 @@ const DebtsReport = () => {
             minCellHeight: 18,
           },
           bodyStyles: {
-            fontSize: 11,
+            fontSize: 13,
             cellPadding: { top: 6, right: 5, bottom: 6, left: 5 },
             textColor: secondary,
             lineWidth: 0.2,
@@ -217,7 +216,13 @@ const DebtsReport = () => {
             overflow: "ellipsize",
             cellWidth: "wrap",
             font: "times",
-            fontSize: 11,
+            fontSize: 13,
+          },
+          didParseCell: (data) => {
+            if (data.row.raw.client === "TOTAL") {
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.fontSize = 15;
+            }
           },
         });
 
@@ -235,6 +240,15 @@ const DebtsReport = () => {
         const product = products.find(p => p.id === debt.productId);
         return product?.name === 'Toilet Paper';
       });
+
+      // Debts paid today
+      const today = new Date();
+      const strawDebtsPaidToday = strawDebts.filter(debt => 
+        debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
+      );
+      const toiletPaperDebtsPaidToday = toiletPaperDebts.filter(debt => 
+        debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
+      );
 
       // Prepare data for tables
       const strawDebtsData = strawDebts.map((debt) => {
@@ -259,9 +273,39 @@ const DebtsReport = () => {
         };
       });
 
-      // Calculate totals
+      const strawPaidTodayData = strawDebtsPaidToday.map((debt) => {
+        const client = clients.find((c) => c.name === debt.client);
+        return {
+          client: client?.name || debt.client || "-",
+          paidToday: (parseFloat(debt.lastPaidAmount) || 0).toLocaleString(),
+          balanceLeft: (parseFloat(debt.amount) || 0).toLocaleString(),
+        };
+      });
+
+      const toiletPaperPaidTodayData = toiletPaperDebtsPaidToday.map((debt) => {
+        const client = clients.find((c) => c.name === debt.client);
+        return {
+          client: client?.name || debt.client || "-",
+          paidToday: (parseFloat(debt.lastPaidAmount) || 0).toLocaleString(),
+          balanceLeft: (parseFloat(debt.amount) || 0).toLocaleString(),
+        };
+      });
+
+      // Calculate totals and metrics
       const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
       const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
+      
+      const highestStrawDebt = strawDebts.reduce((max, debt) => 
+        (parseFloat(debt.amount) || 0) > (parseFloat(max.amount) || 0) ? debt : max, { amount: 0 });
+      const highestToiletPaperDebt = toiletPaperDebts.reduce((max, debt) => 
+        (parseFloat(debt.amount) || 0) > (parseFloat(max.amount) || 0) ? debt : max, { amount: 0 });
+      
+      const oldestStrawDebt = strawDebts.reduce((oldest, debt) => 
+        (!oldest.createdAt || (debt.createdAt && debt.createdAt.toDate().getTime() < oldest.createdAt.toDate().getTime())) ? debt : oldest, 
+        { createdAt: null });
+      const oldestToiletPaperDebt = toiletPaperDebts.reduce((oldest, debt) => 
+        (!oldest.createdAt || (debt.createdAt && debt.createdAt.toDate().getTime() < oldest.createdAt.toDate().getTime())) ? debt : oldest, 
+        { createdAt: null });
 
       // Add total rows
       if (strawDebtsData.length > 0) {
@@ -288,6 +332,78 @@ const DebtsReport = () => {
       addHeader();
       let yPosition = 55;
       yPosition = addIntroductionCard(yPosition);
+
+      // Add summary section
+      if (yPosition > pageHeight - footerSpace - 120) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(15, yPosition, pageWidth - 30, 120, 4, 4, "FD");
+      
+      doc.setFillColor(220, 38, 38);
+      doc.roundedRect(15, yPosition, pageWidth - 30, 20, 4, 4, "F");
+      doc.rect(15, yPosition + 16, pageWidth - 30, 4, "F");
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("times", "bold");
+      doc.text("DEBT SUMMARY", 20, yPosition + 13);
+      
+      const summaryY = yPosition + 30;
+      
+      doc.setTextColor(...primary);
+      doc.setFontSize(14);
+      doc.setFont("times", "bold");
+      doc.text("Straws Total Outstanding:", 25, summaryY);
+      doc.setTextColor(220, 38, 38);
+      doc.text(`${strawTotal.toLocaleString()} UGX`, 25, summaryY + 12);
+      
+      doc.setTextColor(...primary);
+      doc.text("Highest Straw Debt:", 25, summaryY + 24);
+      doc.setTextColor(...secondary);
+      doc.setFont("times", "normal");
+      doc.text(highestStrawDebt.amount ? `${(parseFloat(highestStrawDebt.amount) || 0).toLocaleString()} UGX (${highestStrawDebt.client || '-'})` : "N/A", 25, summaryY + 36);
+      
+      doc.setTextColor(...primary);
+      doc.setFont("times", "bold");
+      doc.text("Oldest Straw Debt:", 25, summaryY + 48);
+      doc.setTextColor(...secondary);
+      doc.setFont("times", "normal");
+      doc.text(oldestStrawDebt.createdAt ? format(oldestStrawDebt.createdAt.toDate ? oldestStrawDebt.createdAt.toDate() : new Date(oldestStrawDebt.createdAt), "MMM dd, yyyy") + ` (${oldestStrawDebt.client || '-'})` : "N/A", 25, summaryY + 60);
+      
+      doc.setTextColor(...primary);
+      doc.setFontSize(14);
+      doc.setFont("times", "bold");
+      doc.text("Toilet Paper Total Outstanding:", pageWidth / 2 + 10, summaryY);
+      doc.setTextColor(220, 38, 38);
+      doc.text(`${toiletPaperTotal.toLocaleString()} UGX`, pageWidth / 2 + 10, summaryY + 12);
+      
+      doc.setTextColor(...primary);
+      doc.text("Highest Toilet Paper Debt:", pageWidth / 2 + 10, summaryY + 24);
+      doc.setTextColor(...secondary);
+      doc.setFont("times", "normal");
+      doc.text(highestToiletPaperDebt.amount ? `${(parseFloat(highestToiletPaperDebt.amount) || 0).toLocaleString()} UGX (${highestToiletPaperDebt.client || '-'})` : "N/A", pageWidth / 2 + 10, summaryY + 36);
+      
+      doc.setTextColor(...primary);
+      doc.setFont("times", "bold");
+      doc.text("Oldest Toilet Paper Debt:", pageWidth / 2 + 10, summaryY + 48);
+      doc.setTextColor(...secondary);
+      doc.setFont("times", "normal");
+      doc.text(oldestToiletPaperDebt.createdAt ? format(oldestToiletPaperDebt.createdAt.toDate ? oldestToiletPaperDebt.createdAt.toDate() : new Date(oldestToiletPaperDebt.createdAt), "MMM dd, yyyy") + ` (${oldestToiletPaperDebt.client || '-'})` : "N/A", pageWidth / 2 + 10, summaryY + 60);
+      
+      doc.setTextColor(...primary);
+      doc.setFontSize(16);
+      doc.setFont("times", "bold");
+      doc.text("GRAND TOTAL:", 25, summaryY + 80);
+      doc.setTextColor(220, 38, 38);
+      doc.setFontSize(18);
+      doc.text(`${(strawTotal + toiletPaperTotal).toLocaleString()} UGX`, 25, summaryY + 95);
+
+      yPosition += 130;
 
       // Add Straws debts table
       yPosition = addTable(
@@ -319,49 +435,31 @@ const DebtsReport = () => {
         'debts'
       );
 
-      // Add summary section
-      if (yPosition > pageHeight - footerSpace - 80) {
-        doc.addPage();
-        yPosition = 20;
-      }
+      // Add Straws debts paid today table
+      yPosition = addTable(
+        "Straws Debts Paid Today",
+        [
+          { header: "CLIENT", dataKey: "client" },
+          { header: "AMOUNT PAID TODAY (UGX)", dataKey: "paidToday" },
+          { header: "BALANCE LEFT (UGX)", dataKey: "balanceLeft" }
+        ],
+        strawPaidTodayData,
+        yPosition,
+        'payments'
+      );
 
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(203, 213, 225);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(15, yPosition, pageWidth - 30, 70, 4, 4, "FD");
-      
-      doc.setFillColor(220, 38, 38);
-      doc.roundedRect(15, yPosition, pageWidth - 30, 20, 4, 4, "F");
-      doc.rect(15, yPosition + 16, pageWidth - 30, 4, "F");
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont("times", "bold");
-      doc.text("DEBT SUMMARY", 20, yPosition + 13);
-      
-      const summaryY = yPosition + 35;
-      
-      doc.setTextColor(...primary);
-      doc.setFontSize(14);
-      doc.setFont("times", "bold");
-      doc.text("Straws Total Outstanding:", 25, summaryY);
-      doc.setTextColor(220, 38, 38);
-      doc.text(`${strawTotal.toLocaleString()} UGX`, 25, summaryY + 12);
-      
-      doc.setTextColor(...primary);
-      doc.setFontSize(14);
-      doc.setFont("times", "bold");
-      doc.text("Toilet Paper Total Outstanding:", pageWidth / 2 + 10, summaryY);
-      doc.setTextColor(220, 38, 38);
-      doc.text(`${toiletPaperTotal.toLocaleString()} UGX`, pageWidth / 2 + 10, summaryY + 12);
-      
-      doc.setTextColor(...primary);
-      doc.setFontSize(16);
-      doc.setFont("times", "bold");
-      doc.text("GRAND TOTAL:", 25, summaryY + 30);
-      doc.setTextColor(220, 38, 38);
-      doc.setFontSize(18);
-      doc.text(`${(strawTotal + toiletPaperTotal).toLocaleString()} UGX`, 25, summaryY + 45);
+      // Add Toilet Paper debts paid today table
+      yPosition = addTable(
+        "Toilet Paper Debts Paid Today",
+        [
+          { header: "CLIENT", dataKey: "client" },
+          { header: "AMOUNT PAID TODAY (UGX)", dataKey: "paidToday" },
+          { header: "BALANCE LEFT (UGX)", dataKey: "balanceLeft" }
+        ],
+        toiletPaperPaidTodayData,
+        yPosition,
+        'payments'
+      );
 
       // Add footers to all pages
       const totalPages = doc.getNumberOfPages();
