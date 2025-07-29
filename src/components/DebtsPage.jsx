@@ -10,6 +10,7 @@ import SearchFilter from './debts/SearchFilter';
 import DateFilter from './debts/DateFilter';
 import DebtsReport from './debts/DebtsReport';
 import { DataContext } from '../DataContext';
+import { isToday } from 'date-fns';
 
 const DebtsPage = () => {
   const { user, debts, clients, sales, products, supplies, loading, error } = useContext(DataContext);
@@ -36,18 +37,38 @@ const DebtsPage = () => {
     }
   };
 
+  // Filter debts by product with exact match
   const strawDebts = debts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
-    return product?.name.toLowerCase().includes('straw');
+    return product?.name === 'Straws';
   });
 
   const toiletPaperDebts = debts.filter(debt => {
     const product = products.find(p => p.id === debt.productId);
-    return product?.name.toLowerCase().includes('toilet paper');
+    return product?.name === 'Toilet Paper';
   });
 
-  const strawTotal = strawDebts.reduce((sum, debt) => sum + (debt.amount || 0), 0);
-  const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (debt.amount || 0), 0);
+  // Debts paid today
+  const strawDebtsPaidToday = strawDebts.filter(debt => 
+    debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
+  );
+  const toiletPaperDebtsPaidToday = toiletPaperDebts.filter(debt => 
+    debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
+  );
+
+  // Calculate totals
+  const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
+  const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
+
+  // Apply date filter
+  const filteredDebts = debts.filter(debt => {
+    if (dateFilter.type === 'all') return true;
+    const debtDate = debt.createdAt?.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt);
+    if (dateFilter.type === 'range' && dateFilter.startDate && dateFilter.endDate) {
+      return debtDate >= new Date(dateFilter.startDate) && debtDate <= new Date(dateFilter.endDate);
+    }
+    return true;
+  });
 
   if (loading) {
     return <div className="text-center py-12 text-slate-600">Loading...</div>;
@@ -80,7 +101,8 @@ const DebtsPage = () => {
           {/* Report Button */}
           <button
             onClick={() => setShowReportSection(!showReportSection)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-md"
+            disabled={debts.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="w-5 h-5" />
             <span className="font-medium">
@@ -101,7 +123,7 @@ const DebtsPage = () => {
 
       {/* Print Prompt Banner */}
       {debts.length > 0 && (
-        <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-100 rounded-full">
               <Printer className="w-5 h-5 text-red-600" />
@@ -134,14 +156,22 @@ const DebtsPage = () => {
               ✕
             </button>
           </div>
-          <DebtsReport />
+          <DebtsReport dateFilter={dateFilter} />
         </div>
       )}
+
+      <SummaryCards
+        filteredDebts={filteredDebts}
+        dateFilter={dateFilter}
+        loading={loading}
+        strawDebtsPaidToday={strawDebtsPaidToday}
+        toiletPaperDebtsPaidToday={toiletPaperDebtsPaidToday}
+      />
 
       <SearchFilter
         filter={filter}
         setFilter={setFilter}
-        filteredDebts={debts}
+        filteredDebts={filteredDebts}
       />
 
       <div className="space-y-8">
@@ -153,7 +183,14 @@ const DebtsPage = () => {
             </div>
           </div>
           <DebtTable
-            debts={strawDebts}
+            debts={strawDebts.filter(debt => 
+              debt.client.toLowerCase().includes(filter.toLowerCase()) &&
+              (dateFilter.type === 'all' || 
+                (dateFilter.startDate && dateFilter.endDate && 
+                  debt.createdAt?.toDate() >= new Date(dateFilter.startDate) && 
+                  debt.createdAt?.toDate() <= new Date(dateFilter.endDate))
+              )
+            )}
             sales={sales}
             setEditingDebt={setEditingDebt}
             setShowForm={setShowForm}
@@ -174,7 +211,14 @@ const DebtsPage = () => {
             </div>
           </div>
           <DebtTable
-            debts={toiletPaperDebts}
+            debts={toiletPaperDebts.filter(debt => 
+              debt.client.toLowerCase().includes(filter.toLowerCase()) &&
+              (dateFilter.type === 'all' || 
+                (dateFilter.startDate && dateFilter.endDate && 
+                  debt.createdAt?.toDate() >= new Date(dateFilter.startDate) && 
+                  debt.createdAt?.toDate() <= new Date(dateFilter.endDate))
+              )
+            )}
             sales={sales}
             setEditingDebt={setEditingDebt}
             setShowForm={setShowForm}
@@ -199,12 +243,6 @@ const DebtsPage = () => {
       >
         <Plus className="w-6 h-6" />
       </button>
-
-      <SummaryCards
-        filteredDebts={debts}
-        dateFilter={dateFilter}
-        loading={loading}
-      />
 
       {/* Debt Form Modal */}
       {showForm && (
