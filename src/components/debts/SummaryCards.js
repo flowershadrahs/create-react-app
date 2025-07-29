@@ -1,38 +1,47 @@
 import React from "react";
-import { Users, TrendingUp, TrendingDown, DollarSign, Clock, Calendar } from "lucide-react";
+import { Users, TrendingUp, TrendingDown, DollarSign, Clock, Calendar, CreditCard } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import Skeleton from 'react-loading-skeleton';
+import { DataContext } from '../DataContext';
 
-const SummaryCards = ({ filteredDebts, dateFilter, loading }) => {
+const SummaryCards = ({ filteredDebts, dateFilter, loading, strawDebtsPaidToday, toiletPaperDebtsPaidToday }) => {
+  const { products } = useContext(DataContext);
+
   const summaryMetrics = React.useMemo(() => {
-    const activeDebts = filteredDebts.filter((debt) => debt.amount > 0);
-    const paidDebts = filteredDebts.filter((debt) => debt.amount === 0);
+    // Filter debts by product
+    const strawDebts = filteredDebts.filter(debt => {
+      const product = products.find(p => p.id === debt.productId);
+      return product?.name === 'Straws';
+    });
+    const toiletPaperDebts = filteredDebts.filter(debt => {
+      const product = products.find(p => p.id === debt.productId);
+      return product?.name === 'Toilet Paper';
+    });
 
+    // Calculate metrics
+    const activeDebts = filteredDebts.filter((debt) => parseFloat(debt.amount) > 0);
+    const paidDebts = filteredDebts.filter((debt) => parseFloat(debt.amount) === 0);
     const totalDebts = filteredDebts.length;
-    const totalAmountOwed = activeDebts.reduce((sum, debt) => sum + (debt.amount || 0), 0);
+    const totalAmountOwed = activeDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
 
-    const highestDebt =
-      activeDebts.length > 0
-        ? activeDebts.reduce((max, debt) => (debt.amount > max.amount ? debt : max), activeDebts[0])
-        : null;
+    const highestDebt = activeDebts.length > 0
+      ? activeDebts.reduce((max, debt) => (parseFloat(debt.amount) > parseFloat(max.amount) ? debt : max), activeDebts[0])
+      : null;
 
-    const lowestDebt =
-      activeDebts.length > 0
-        ? activeDebts.reduce((min, debt) => (debt.amount < min.amount ? debt : min), activeDebts[0])
-        : null;
-
-    const oldestDebt =
-      activeDebts.length > 0
-        ? activeDebts.reduce((oldest, debt) => {
-            const debtDate = debt.createdAt?.toDate();
-            const oldestDate = oldest.createdAt?.toDate();
-            return debtDate && oldestDate && debtDate < oldestDate ? debt : oldest;
-          }, activeDebts[0])
-        : null;
+    const oldestDebt = activeDebts.length > 0
+      ? activeDebts.reduce((oldest, debt) => {
+          const debtDate = debt.createdAt?.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt);
+          const oldestDate = oldest.createdAt?.toDate ? oldest.createdAt.toDate() : new Date(oldest.createdAt);
+          return debtDate && oldestDate && debtDate < oldestDate ? debt : oldest;
+        }, activeDebts[0])
+      : null;
 
     const daysSinceOldest = oldestDebt?.createdAt
-      ? differenceInDays(new Date(), oldestDebt.createdAt.toDate())
+      ? differenceInDays(new Date(), oldestDebt.createdAt.toDate ? oldestDebt.createdAt.toDate() : new Date(oldestDebt.createdAt))
       : 0;
+
+    const strawPaidTodayTotal = strawDebtsPaidToday.reduce((sum, debt) => sum + (parseFloat(debt.lastPaidAmount) || 0), 0);
+    const toiletPaperPaidTodayTotal = toiletPaperDebtsPaidToday.reduce((sum, debt) => sum + (parseFloat(debt.lastPaidAmount) || 0), 0);
 
     return {
       totalDebts,
@@ -40,17 +49,17 @@ const SummaryCards = ({ filteredDebts, dateFilter, loading }) => {
       paidDebts: paidDebts.length,
       totalAmountOwed,
       highestDebt,
-      lowestDebt,
       oldestDebt,
       daysSinceOldest,
-      averageDebtAmount: activeDebts.length > 0 ? totalAmountOwed / activeDebts.length : 0,
+      strawPaidTodayTotal,
+      toiletPaperPaidTodayTotal,
     };
-  }, [filteredDebts]);
+  }, [filteredDebts, strawDebtsPaidToday, toiletPaperDebtsPaidToday, products]);
 
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(8)].map((_, i) => (
+        {[...Array(10)].map((_, i) => (
           <div key={i} className="bg-white p-6 rounded-xl shadow-lg border border-neutral-200">
             <div className="flex items-center justify-between mb-4">
               <Skeleton height={40} width={40} borderRadius={8} />
@@ -126,25 +135,10 @@ const SummaryCards = ({ filteredDebts, dateFilter, loading }) => {
           <span className="text-sm font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded">Highest</span>
         </div>
         <div className="text-2xl font-bold text-neutral-800 mb-1">
-          {summaryMetrics.highestDebt ? `${summaryMetrics.highestDebt.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX` : '0 UGX'}
+          {summaryMetrics.highestDebt ? `${parseFloat(summaryMetrics.highestDebt.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX` : '0 UGX'}
         </div>
         <p className="text-sm text-neutral-600 truncate">
           {summaryMetrics.highestDebt ? summaryMetrics.highestDebt.client || 'Unknown Client' : 'No debts'}
-        </p>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-lg border border-neutral-200 hover:shadow-xl transition-shadow">
-        <div className="flex items-center justify-between mb-4">
-          <div className="p-3 bg-indigo-100 rounded-lg">
-            <TrendingDown className="w-6 h-6 text-indigo-600" />
-          </div>
-          <span className="text-sm font-medium text-indigo-600 bg-indigo-100 px-2 py-1 rounded">Lowest</span>
-        </div>
-        <div className="text-2xl font-bold text-neutral-800 mb-1">
-          {summaryMetrics.lowestDebt ? `${summaryMetrics.lowestDebt.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX` : '0 UGX'}
-        </div>
-        <p className="text-sm text-neutral-600 truncate">
-          {summaryMetrics.lowestDebt ? summaryMetrics.lowestDebt.client || 'Unknown Client' : 'No debts'}
         </p>
       </div>
 
@@ -163,15 +157,32 @@ const SummaryCards = ({ filteredDebts, dateFilter, loading }) => {
 
       <div className="bg-white p-6 rounded-xl shadow-lg border border-neutral-200 hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
-          <div className="p-3 bg-teal-100 rounded-lg">
-            <Calendar className="w-6 h-6 text-teal-600" />
+          <div className="p-3 bg-blue-100 rounded-lg">
+            <CreditCard className="w-6 h-6 text-blue-600" />
           </div>
-          <span className="text-sm font-medium text-teal-600 bg-teal-100 px-2 py-1 rounded">Average</span>
+          <span className="text-sm font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">Straws Paid Today</span>
         </div>
         <div className="text-2xl font-bold text-neutral-800 mb-1">
-          {Math.round(summaryMetrics.averageDebtAmount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
+          {summaryMetrics.strawPaidTodayTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
         </div>
-        <p className="text-sm text-neutral-600">Average Debt Amount</p>
+        <p className="text-sm text-neutral-600">
+          {strawDebtsPaidToday.length} debt{strawDebtsPaidToday.length !== 1 ? 's' : ''} paid today
+        </p>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-neutral-200 hover:shadow-xl transition-shadow">
+        <div className="flex items-center justify-between mb-4">
+          <div className="p-3 bg-green-100 rounded-lg">
+            <CreditCard className="w-6 h-6 text-green-600" />
+          </div>
+          <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded">Toilet Paper Paid Today</span>
+        </div>
+        <div className="text-2xl font-bold text-neutral-800 mb-1">
+          {summaryMetrics.toiletPaperPaidTodayTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
+        </div>
+        <p className="text-sm text-neutral-600">
+          {toiletPaperDebtsPaidToday.length} debt{toiletPaperDebtsPaidToday.length !== 1 ? 's' : ''} paid today
+        </p>
       </div>
     </div>
   );
