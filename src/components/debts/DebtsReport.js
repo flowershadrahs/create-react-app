@@ -30,10 +30,12 @@ const DebtsReport = ({ dateFilter }) => {
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
 
-      const primary = [15, 23, 42];
-      const secondary = [71, 85, 105];
-      const background = [248, 250, 252];
-      const border = [226, 232, 240];
+      const primary = [15, 23, 42]; // Dark navy for headers
+      const secondary = [71, 85, 105]; // Slate for text
+      const background = [248, 250, 252]; // Light gray for backgrounds
+      const border = [226, 232, 240]; // Light border
+      const strawColor = [0, 128, 128]; // Corporate teal for straws
+      const toiletPaperColor = [34, 139, 34]; // Corporate forest green for toilet paper
       const footerSpace = 30;
       const tableWidth = pageWidth - 30;
 
@@ -125,7 +127,7 @@ const DebtsReport = ({ dateFilter }) => {
         doc.setLineWidth(0.5);
         doc.roundedRect(15, yPos, pageWidth - 30, 60, 4, 4, "FD");
         
-        doc.setFillColor(31, 41, 55);
+        doc.setFillColor(...primary);
         doc.roundedRect(15, yPos, pageWidth - 30, 20, 4, 4, "F");
         doc.rect(15, yPos + 16, pageWidth - 30, 4, "F");
         
@@ -167,6 +169,85 @@ const DebtsReport = ({ dateFilter }) => {
         return yPos + 70;
       };
 
+      // Add approval section
+      const addApprovalSection = (yPos) => {
+        if (yPos > pageHeight - footerSpace - 70) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Card background
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(15, yPos, pageWidth - 30, 70, 4, 4, "FD");
+        
+        // Card header
+        doc.setFillColor(...primary);
+        doc.roundedRect(15, yPos, pageWidth - 30, 15, 4, 4, "F");
+        doc.rect(15, yPos + 11, pageWidth - 30, 4, "F");
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont("times", "bold");
+        doc.text("DOCUMENT APPROVAL", 20, yPos + 10);
+        
+        const cardContentY = yPos + 25;
+        
+        // Left side - Compiled by
+        const leftX = 25;
+        const rightX = pageWidth / 2 + 10;
+        
+        doc.setTextColor(...primary);
+        doc.setFontSize(12);
+        doc.setFont("times", "bold");
+        doc.text("COMPILED BY:", leftX, cardContentY);
+        
+        doc.setTextColor(...secondary);
+        doc.setFontSize(11);
+        doc.setFont("times", "normal");
+        doc.text("SHADIA NAKITTO", leftX, cardContentY + 12);
+        doc.setFontSize(10);
+        doc.setFont("times", "normal");
+        doc.text("Sales & Accounts Assistant", leftX, cardContentY + 20);
+        
+        // Signature line
+        doc.setDrawColor(...secondary);
+        doc.setLineWidth(0.5);
+        doc.line(leftX, cardContentY + 35, leftX + 70, cardContentY + 35);
+        doc.setFontSize(9);
+        doc.text("Signature", leftX, cardContentY + 42);
+        doc.text(`Date: ${format(new Date(), "MMM dd, yyyy")}`, leftX + 35, cardContentY + 42);
+        
+        // Vertical divider
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.5);
+        doc.line(pageWidth / 2, cardContentY - 5, pageWidth / 2, yPos + 65);
+        
+        // Right side - Presented to
+        doc.setTextColor(...primary);
+        doc.setFontSize(12);
+        doc.setFont("times", "bold");
+        doc.text("PRESENTED TO:", rightX, cardContentY);
+        
+        doc.setTextColor(...secondary);
+        doc.setFontSize(11);
+        doc.setFont("times", "normal");
+        doc.text("CHRISTINE NAKAZIBA", rightX, cardContentY + 12);
+        doc.setFontSize(10);
+        doc.setFont("times", "normal");
+        doc.text("Marketing Manager", rightX, cardContentY + 20);
+        
+        // Signature line
+        doc.setDrawColor(...secondary);
+        doc.setLineWidth(0.5);
+        doc.line(rightX, cardContentY + 35, rightX + 70, cardContentY + 35);
+        doc.setFontSize(9);
+        doc.text("Signature & Date", rightX, cardContentY + 42);
+
+        return yPos + 80;
+      };
+
       // Add table function
       const addTable = (title, columns, rows, startY, sectionType = 'debts') => {
         if (startY > pageHeight - footerSpace - 60) {
@@ -186,8 +267,9 @@ const DebtsReport = ({ dateFilter }) => {
           return startY + 30;
         }
 
-        const sectionColor = sectionType === 'debts' ? [255, 159, 64] : 
-                           sectionType === 'strawPayments' ? [59, 130, 246] : [16, 185, 129]; // Orange for debts, blue for straw payments, green for toilet paper payments
+        const sectionColor = sectionType === 'debts' ? strawColor : 
+                           sectionType === 'strawPayments' ? strawColor : 
+                           toiletPaperColor; // Teal for straws, forest green for toilet paper
         const filteredRows = rows.filter(row => 
           row && 
           Object.values(row).some(cell => 
@@ -361,7 +443,7 @@ const DebtsReport = ({ dateFilter }) => {
       doc.setFontSize(14);
       doc.setFont("times", "bold");
       doc.text("Straws Total Outstanding:", 25, summaryY);
-      doc.setTextColor(220, 38, 38);
+      doc.setTextColor(...strawColor);
       doc.text(`${strawTotal.toLocaleString()} UGX`, 25, summaryY + 12);
       
       doc.setTextColor(...primary);
@@ -381,7 +463,7 @@ const DebtsReport = ({ dateFilter }) => {
       doc.setFontSize(14);
       doc.setFont("times", "bold");
       doc.text("Toilet Paper Total Outstanding:", pageWidth / 2 + 10, summaryY);
-      doc.setTextColor(220, 38, 38);
+      doc.setTextColor(...toiletPaperColor);
       doc.text(`${toiletPaperTotal.toLocaleString()} UGX`, pageWidth / 2 + 10, summaryY + 12);
       
       doc.setTextColor(...primary);
@@ -396,14 +478,6 @@ const DebtsReport = ({ dateFilter }) => {
       doc.setTextColor(...secondary);
       doc.setFont("times", "normal");
       doc.text(oldestToiletPaperDebt.createdAt ? format(oldestToiletPaperDebt.createdAt.toDate ? oldestToiletPaperDebt.createdAt.toDate() : new Date(oldestToiletPaperDebt.createdAt), "MMM dd, yyyy") + ` (${oldestToiletPaperDebt.client || '-'})` : "N/A", pageWidth / 2 + 10, summaryY + 60);
-      
-      doc.setTextColor(...primary);
-      doc.setFontSize(16);
-      doc.setFont("times", "bold");
-      doc.text("GRAND TOTAL:", 25, summaryY + 80);
-      doc.setTextColor(220, 38, 38);
-      doc.setFontSize(18);
-      doc.text(`${(strawTotal + toiletPaperTotal).toLocaleString()} UGX`, 25, summaryY + 95);
 
       yPosition += 130;
 
@@ -456,8 +530,11 @@ const DebtsReport = ({ dateFilter }) => {
         ],
         toiletPaperDebtsData,
         yPosition,
-        'debts'
+        'toiletPaperPayments'
       );
+
+      // Add approval section
+      yPosition = addApprovalSection(yPosition);
 
       // Add footers to all pages
       const totalPages = doc.getNumberOfPages();
@@ -516,7 +593,6 @@ const DebtsReport = ({ dateFilter }) => {
 
   const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
   const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
-  const grandTotal = strawTotal + toiletPaperTotal;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
@@ -528,23 +604,17 @@ const DebtsReport = ({ dateFilter }) => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-red-800 mb-1">Straws Debts</h3>
-          <p className="text-2xl font-bold text-red-600">{strawTotal.toLocaleString()} UGX</p>
-          <p className="text-sm text-red-700">{strawDebts.length} outstanding debt{strawDebts.length !== 1 ? 's' : ''}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-teal-800 mb-1">Straws Debts</h3>
+          <p className="text-2xl font-bold text-teal-600">{strawTotal.toLocaleString()} UGX</p>
+          <p className="text-sm text-teal-700">{strawDebts.length} outstanding debt{strawDebts.length !== 1 ? 's' : ''}</p>
         </div>
         
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-orange-800 mb-1">Toilet Paper Debts</h3>
-          <p className="text-2xl font-bold text-orange-600">{toiletPaperTotal.toLocaleString()} UGX</p>
-          <p className="text-sm text-orange-700">{toiletPaperDebts.length} outstanding debt{toiletPaperDebts.length !== 1 ? 's' : ''}</p>
-        </div>
-        
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-slate-800 mb-1">Total Outstanding</h3>
-          <p className="text-2xl font-bold text-slate-700">{grandTotal.toLocaleString()} UGX</p>
-          <p className="text-sm text-slate-600">{debts.length} total debt{debts.length !== 1 ? 's' : ''}</p>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-green-800 mb-1">Toilet Paper Debts</h3>
+          <p className="text-2xl font-bold text-green-600">{toiletPaperTotal.toLocaleString()} UGX</p>
+          <p className="text-sm text-green-700">{toiletPaperDebts.length} outstanding debt{toiletPaperDebts.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
