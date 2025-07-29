@@ -60,14 +60,15 @@ const DebtsPage = () => {
   const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
   const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
 
-  // Apply date filter
+  // Apply date and search filter
   const filteredDebts = debts.filter(debt => {
-    if (dateFilter.type === 'all') return true;
     const debtDate = debt.createdAt?.toDate ? debt.createdAt.toDate() : new Date(debt.createdAt);
-    if (dateFilter.type === 'range' && dateFilter.startDate && dateFilter.endDate) {
-      return debtDate >= new Date(dateFilter.startDate) && debtDate <= new Date(dateFilter.endDate);
-    }
-    return true;
+    const matchesDate = dateFilter.type === 'all' || 
+      (dateFilter.startDate && dateFilter.endDate && 
+        debtDate >= new Date(dateFilter.startDate) && 
+        debtDate <= new Date(dateFilter.endDate));
+    const matchesSearch = debt.client.toLowerCase().includes(filter.toLowerCase());
+    return matchesDate && matchesSearch;
   });
 
   if (loading) {
@@ -101,7 +102,7 @@ const DebtsPage = () => {
           {/* Report Button */}
           <button
             onClick={() => setShowReportSection(!showReportSection)}
-            disabled={debts.length === 0}
+            disabled={filteredDebts.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="w-5 h-5" />
@@ -122,7 +123,7 @@ const DebtsPage = () => {
       </div>
 
       {/* Print Prompt Banner */}
-      {debts.length > 0 && (
+      {filteredDebts.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-100 rounded-full">
