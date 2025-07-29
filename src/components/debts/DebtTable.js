@@ -17,7 +17,7 @@ const DebtTable = ({
   total,
   showTotalAtTop
 }) => {
-  const [sorting, setSorting] = React.useState([]);
+  const [sorting, setSorting] = React.useState([{ id: "client", desc: false }]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -29,11 +29,11 @@ const DebtTable = ({
       case 'client':
         return (value || '').toLowerCase();
       case 'amount':
-        return Number(value) || 0;
-      case 'createdAt':
-        return value ? value.toDate().getTime() : 0;
+        return parseFloat(value) || 0;
       case 'status':
-        return Number(row.original.amount) === 0 ? 0 : 1;
+        return parseFloat(row.original.amount) === 0 ? 0 : 1;
+      case 'updatedAt':
+        return value ? value.toDate().getTime() : 0;
       default:
         return value;
     }
@@ -51,7 +51,7 @@ const DebtTable = ({
       },
     },
     {
-      header: "Amount (UGX)",
+      header: "Debts (UGX)",
       accessorKey: "amount",
       cell: (info) => {
         const value = parseFloat(info.getValue()) || 0;
@@ -70,12 +70,12 @@ const DebtTable = ({
       cell: (info) => (
         <span
           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-            info.getValue() === 0
+            parseFloat(info.getValue()) === 0
               ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
               : 'bg-amber-100 text-amber-700 border border-amber-200'
           }`}
         >
-          {info.getValue() === 0 ? 'Paid' : 'Pending'}
+          {parseFloat(info.getValue()) === 0 ? 'Paid' : 'Pending'}
         </span>
       ),
       sortingFn: (rowA, rowB, columnId) => {
@@ -85,9 +85,9 @@ const DebtTable = ({
       },
     },
     {
-      header: "Date",
-      accessorKey: "createdAt",
-      cell: (info) => (info.getValue() ? format(info.getValue().toDate(), 'MMM dd, yyyy') : '-'),
+      header: "Updated",
+      accessorKey: "updatedAt",
+      cell: (info) => (info.getValue() ? format(info.getValue().toDate ? info.getValue().toDate() : new Date(info.getValue()), 'MMM dd, yyyy') : '-'),
       sortingFn: (rowA, rowB, columnId) => {
         const a = getSortValue(rowA, columnId);
         const b = getSortValue(rowB, columnId);
@@ -120,7 +120,7 @@ const DebtTable = ({
       enableSorting: false,
       cell: (info) => (
         <div className="flex items-center gap-2">
-          {info.row.original.amount !== 0 && (
+          {parseFloat(info.row.original.amount) !== 0 && (
             <>
               <button
                 onClick={() => {
@@ -180,7 +180,7 @@ const DebtTable = ({
       {showTotalAtTop && (
         <div className="p-4 bg-neutral-50 border-b border-neutral-100">
           <div className="text-right font-bold text-neutral-800">
-            Total: {total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
+            Total: {parseFloat(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
           </div>
         </div>
       )}
@@ -237,7 +237,7 @@ const DebtTable = ({
                 <tfoot>
                   <tr>
                     <td colSpan={6} className="px-6 py-4 text-right font-bold">
-                      Total: {total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
+                      Total: {parseFloat(total).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} UGX
                     </td>
                   </tr>
                 </tfoot>
