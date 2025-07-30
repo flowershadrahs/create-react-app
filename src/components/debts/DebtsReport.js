@@ -349,8 +349,9 @@ const DebtsReport = ({ dateFilter }) => {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
+          rawAmount: parseFloat(debt.amount) || 0, // Store raw amount for sorting
         };
-      });
+      }).sort((a, b) => b.rawAmount - a.rawAmount); // Sort by debtBalance in descending order
 
       const toiletPaperDebtsData = toiletPaperDebts.map((debt) => {
         const client = clients.find((c) => c.name === debt.client);
@@ -358,8 +359,9 @@ const DebtsReport = ({ dateFilter }) => {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
+          rawAmount: parseFloat(debt.amount) || 0, // Store raw amount for sorting
         };
-      });
+      }).sort((a, b) => b.rawAmount - a.rawAmount); // Sort by debtBalance in descending order
 
       const strawPaidTodayData = strawDebtsPaidToday.map((debt) => {
         const client = clients.find((c) => c.name === debt.client);
