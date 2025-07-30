@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import toast from "react-hot-toast";
-import logo from "../logo.jpg";
+import logo from "./logo.jpg";
 import { DataContext } from '../DataContext';
 
 const ExpensesReport = ({ dateFilter }) => {
