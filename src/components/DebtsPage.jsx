@@ -1,11 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Plus, FileText, Printer } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import DebtForm from './debts/DebtForm';
 import SalesForm from './sales/SalesForm';
 import DebtTable from './debts/DebtTable';
-import SummaryCards from './debts/SummaryCards';
 import SearchFilter from './debts/SearchFilter';
 import DateFilter from './debts/DateFilter';
 import DebtsReport from './debts/DebtsReport';
@@ -16,7 +15,6 @@ const DebtsPage = () => {
   const { user, debts, clients, sales, products, supplies, loading, error } = useContext(DataContext);
   const [showForm, setShowForm] = useState(false);
   const [showSalesForm, setShowSalesForm] = useState(false);
-  const [showReportSection, setShowReportSection] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
   const [editingSale, setEditingSale] = useState(null);
   const [filter, setFilter] = useState('');
@@ -71,48 +69,72 @@ const DebtsPage = () => {
     return matchesDate && matchesSearch;
   });
 
+  // Function to trigger PDF generation directly
+  const generateDebtsReport = () => {
+    // Create a temporary container to render DebtsReport and trigger its generateDebtsReport function
+    const tempContainer = document.createElement('div');
+    document.body.appendChild(tempContainer);
+    
+    // Simulate rendering DebtsReport with a ref to trigger PDF generation
+    const reportComponent = React.createRef();
+    import('react-dom').then(ReactDOM => {
+      ReactDOM.render(
+        <DataContext.Provider value={{ user, debts, clients, products, supplies, loading, error }}>
+          <DebtsReport dateFilter={dateFilter} ref={reportComponent} />
+        </DataContext.Provider>,
+        tempContainer,
+        () => {
+          if (reportComponent.current) {
+            reportComponent.current.generateDebtsReport();
+          }
+          // Clean up
+          ReactDOM.unmountComponentAtNode(tempContainer);
+          document.body.removeChild(tempContainer);
+        }
+      );
+    });
+  };
+
   if (loading) {
-    return <div className="text-center py-12 text-slate-600">Loading...</div>;
+    return <div className="text-center py-8 text-slate-600">Loading...</div>;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-800 px-2 py-2 rounded-xl flex items-center gap-2">
+      <div className="bg-red-50 border border-red-200 text-red-800 px-2 py-2 rounded-lg flex items-center gap-2">
         {error}
       </div>
     );
   }
 
   if (!user) {
-    return <div className="text-center py-12 text-slate-600">Please log in to view debts.</div>;
+    return <div className="text-center py-8 text-slate-600">Please log in to view debts.</div>;
   }
 
   return (
-    <div className="space-y-6 w-full bg-white p-2">
+    <div className="space-y-4 w-full bg-white p-1">
       {/* Header Section */}
-      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-slate-800 tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
               Debts Management
             </h1>
-            <p className="text-slate-600 mt-1">Track and manage outstanding debts</p>
+            <p className="text-slate-600 text-sm">Track and manage outstanding debts</p>
           </div>
           
-          {/* Report Button */}
+          {/* Generate Report Button */}
           <button
-            onClick={() => setShowReportSection(!showReportSection)}
+            onClick={generateDebtsReport}
             disabled={filteredDebts.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FileText className="w-5 h-5" />
-            <span className="font-medium">
-              {showReportSection ? 'Hide Report' : 'Generate Report'}
-            </span>
+            <FileText className="w-4 h-4" />
+            <span className="font-medium text-sm">Generate Report</span>
           </button>
         </div>
         
-        <div className="mt-4">
+        <div className="mt-2">
           <DateFilter
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
@@ -122,64 +144,19 @@ const DebtsPage = () => {
         </div>
       </div>
 
-      {/* Print Prompt Banner */}
-      {filteredDebts.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-full">
-              <Printer className="w-5 h-5 text-red-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-red-800">Ready to Print Reports?</h3>
-              <p className="text-red-700 text-sm">
-                Generate professional PDF reports of your outstanding debts for record-keeping and client communication.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowReportSection(true)}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors duration-200"
-            >
-              Generate Now
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Report Section */}
-      {showReportSection && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-800">Debts Report</h2>
-            <button
-              onClick={() => setShowReportSection(false)}
-              className="text-slate-500 hover:text-slate-700 transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-          <DebtsReport dateFilter={dateFilter} />
-        </div>
-      )}
-
-      <SummaryCards
-        filteredDebts={filteredDebts}
-        dateFilter={dateFilter}
-        loading={loading}
-        strawDebtsPaidToday={strawDebtsPaidToday}
-        toiletPaperDebtsPaidToday={toiletPaperDebtsPaidToday}
-      />
-
+      {/* Search Filter */}
       <SearchFilter
         filter={filter}
         setFilter={setFilter}
         filteredDebts={filteredDebts}
       />
 
-      <div className="space-y-8">
+      {/* Debt Tables */}
+      <div className="space-y-6">
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-slate-800">Straw Debts</h2>
-            <div className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold text-slate-800">Straw Debts</h2>
+            <div className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
               {strawDebts.length} debt{strawDebts.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -205,9 +182,9 @@ const DebtsPage = () => {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-slate-800">Toilet Paper Debts</h2>
-            <div className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold text-slate-800">Toilet Paper Debts</h2>
+            <div className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
               {toiletPaperDebts.length} debt{toiletPaperDebts.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -239,10 +216,10 @@ const DebtsPage = () => {
           setEditingDebt(null);
           setShowForm(true);
         }}
-        className="fixed bottom-20 sm:bottom-24 right-2 bg-orange-600 text-white rounded-full p-4 shadow-lg hover:bg-orange-700 transition-all duration-200 hover:scale-110 z-[100]"
+        className="fixed bottom-16 sm:bottom-20 right-2 bg-orange-600 text-white rounded-full p-3 shadow-lg hover:bg-orange-700 transition-all duration-200 hover:scale-110 z-[100]"
         title="Add New Debt"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-5 h-5" />
       </button>
 
       {/* Debt Form Modal */}
