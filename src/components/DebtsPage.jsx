@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Plus, FileText } from 'lucide-react';
@@ -24,6 +24,7 @@ const DebtsPage = () => {
     startDate: null,
     endDate: null,
   });
+  const reportRef = useRef(null);
 
   const handleDeleteDebt = async (id) => {
     if (window.confirm('Are you sure you want to delete this debt?')) {
@@ -46,14 +47,6 @@ const DebtsPage = () => {
     return product?.name === 'Toilet Paper';
   });
 
-  // Debts paid today
-  const strawDebtsPaidToday = strawDebts.filter(debt => 
-    debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
-  );
-  const toiletPaperDebtsPaidToday = toiletPaperDebts.filter(debt => 
-    debt.lastPaidAmount > 0 && isToday(debt.updatedAt?.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt))
-  );
-
   // Calculate totals
   const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
   const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
@@ -69,30 +62,10 @@ const DebtsPage = () => {
     return matchesDate && matchesSearch;
   });
 
-  // Function to trigger PDF generation directly
-  const generateDebtsReport = () => {
-    // Create a temporary container to render DebtsReport and trigger its generateDebtsReport function
-    const tempContainer = document.createElement('div');
-    document.body.appendChild(tempContainer);
-    
-    // Simulate rendering DebtsReport with a ref to trigger PDF generation
-    const reportComponent = React.createRef();
-    import('react-dom').then(ReactDOM => {
-      ReactDOM.render(
-        <DataContext.Provider value={{ user, debts, clients, products, supplies, loading, error }}>
-          <DebtsReport dateFilter={dateFilter} ref={reportComponent} />
-        </DataContext.Provider>,
-        tempContainer,
-        () => {
-          if (reportComponent.current) {
-            reportComponent.current.generateDebtsReport();
-          }
-          // Clean up
-          ReactDOM.unmountComponentAtNode(tempContainer);
-          document.body.removeChild(tempContainer);
-        }
-      );
-    });
+  const handleGenerateReport = () => {
+    if (reportRef.current) {
+      reportRef.current.generateDebtsReport();
+    }
   };
 
   if (loading) {
@@ -125,7 +98,7 @@ const DebtsPage = () => {
           
           {/* Generate Report Button */}
           <button
-            onClick={generateDebtsReport}
+            onClick={handleGenerateReport}
             disabled={filteredDebts.length === 0}
             className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -208,6 +181,11 @@ const DebtsPage = () => {
             showTotalAtTop
           />
         </div>
+      </div>
+
+      {/* Hidden DebtsReport Component */}
+      <div style={{ display: 'none' }}>
+        <DebtsReport ref={reportRef} dateFilter={dateFilter} />
       </div>
 
       {/* Floating Action Button */}
