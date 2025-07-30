@@ -223,29 +223,6 @@ const ExpensesPage = () => {
     }
   };
 
-  // Function to trigger PDF generation directly
-  const generateExpensesReport = () => {
-    const tempContainer = document.createElement('div');
-    document.body.appendChild(tempContainer);
-    
-    import('react-dom').then(ReactDOM => {
-      ReactDOM.render(
-        <DataContext.Provider value={{ user, expenses, categories, loading, error }}>
-          <ExpensesReport dateFilter={dateFilter} ref={reportComponent => {
-            if (reportComponent) {
-              reportComponent.generateExpensesReport();
-            }
-          }} />
-        </DataContext.Provider>,
-        tempContainer,
-        () => {
-          ReactDOM.unmountComponentAtNode(tempContainer);
-          document.body.removeChild(tempContainer);
-        }
-      );
-    });
-  };
-
   if (loading) {
     return <div className="text-center py-8 text-slate-600">Loading...</div>;
   }
@@ -270,14 +247,8 @@ const ExpensesPage = () => {
               <Tag className="w-4 h-4 inline-block mr-1" />
               Categories
             </button>
-            <button
-              onClick={generateExpensesReport}
-              disabled={filteredExpenses.length === 0}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="font-medium text-sm">Generate Report</span>
-            </button>
+            {/* Render ExpensesReport component directly */}
+            <ExpensesReport dateFilter={dateFilter} />
           </div>
         </div>
         <div className="mt-2">
@@ -451,7 +422,7 @@ const ExpensesPage = () => {
       )}
 
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-2 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110 barbajaja] flex items-center justify-center p-2 overflow-y-auto">
           <div className="w-full max-w-lg my-8 bg-white rounded-lg shadow-2xl p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Manage Categories</h3>
