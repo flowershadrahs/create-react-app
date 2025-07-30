@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Users, TrendingUp, TrendingDown, DollarSign, Clock, Calendar, CreditCard } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import Skeleton from 'react-loading-skeleton';
