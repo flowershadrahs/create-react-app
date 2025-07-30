@@ -5,6 +5,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 import toast from "react-hot-toast";
 import logo from "./logo.jpg";
 import { DataContext } from '../DataContext';
+import { FileText } from 'lucide-react';
 
 const ExpensesReport = ({ dateFilter }) => {
   const { user, expenses, categories, loading, error } = useContext(DataContext);
