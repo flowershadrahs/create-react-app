@@ -1,4 +1,5 @@
-import React, { useState, useContext } from "react";
+
+import React, { useState, useContext, forwardRef, useImperativeHandle } from "react";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { format, isToday } from "date-fns";
@@ -7,7 +8,7 @@ import toast from "react-hot-toast";
 import logo from "../logo.jpg";
 import { DataContext } from '../../DataContext';
 
-const DebtsReport = ({ dateFilter }) => {
+const DebtsReport = ({ dateFilter }, ref) => {
   const { user, debts, clients, products, loading, error } = useContext(DataContext);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -176,13 +177,11 @@ const DebtsReport = ({ dateFilter }) => {
           yPos = 20;
         }
 
-        // Card background
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.5);
         doc.roundedRect(15, yPos, pageWidth - 30, 70, 4, 4, "FD");
         
-        // Card header
         doc.setFillColor(...primary);
         doc.roundedRect(15, yPos, pageWidth - 30, 15, 4, 4, "F");
         doc.rect(15, yPos + 11, pageWidth - 30, 4, "F");
@@ -194,7 +193,6 @@ const DebtsReport = ({ dateFilter }) => {
         
         const cardContentY = yPos + 25;
         
-        // Left side - Compiled by
         const leftX = 25;
         const rightX = pageWidth / 2 + 10;
         
@@ -211,7 +209,6 @@ const DebtsReport = ({ dateFilter }) => {
         doc.setFont("times", "normal");
         doc.text("Sales & Accounts Assistant", leftX, cardContentY + 20);
         
-        // Signature line
         doc.setDrawColor(...secondary);
         doc.setLineWidth(0.5);
         doc.line(leftX, cardContentY + 35, leftX + 70, cardContentY + 35);
@@ -219,12 +216,10 @@ const DebtsReport = ({ dateFilter }) => {
         doc.text("Signature", leftX, cardContentY + 42);
         doc.text(`Date: ${format(new Date(), "MMM dd, yyyy")}`, leftX + 35, cardContentY + 42);
         
-        // Vertical divider
         doc.setDrawColor(203, 213, 225);
         doc.setLineWidth(0.5);
         doc.line(pageWidth / 2, cardContentY - 5, pageWidth / 2, yPos + 65);
         
-        // Right side - Presented to
         doc.setTextColor(...primary);
         doc.setFontSize(12);
         doc.setFont("times", "bold");
@@ -238,7 +233,6 @@ const DebtsReport = ({ dateFilter }) => {
         doc.setFont("times", "normal");
         doc.text("Marketing Manager", rightX, cardContentY + 20);
         
-        // Signature line
         doc.setDrawColor(...secondary);
         doc.setLineWidth(0.5);
         doc.line(rightX, cardContentY + 35, rightX + 70, cardContentY + 35);
@@ -269,7 +263,7 @@ const DebtsReport = ({ dateFilter }) => {
 
         const sectionColor = sectionType === 'debts' ? strawColor : 
                            sectionType === 'strawPayments' ? strawColor : 
-                           toiletPaperColor; // Teal for straws, forest green for toilet paper
+                           toiletPaperColor;
         const filteredRows = rows.filter(row => 
           row && 
           Object.values(row).some(cell => 
@@ -349,9 +343,9 @@ const DebtsReport = ({ dateFilter }) => {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
-          rawAmount: parseFloat(debt.amount) || 0, // Store raw amount for sorting
+          rawAmount: parseFloat(debt.amount) || 0,
         };
-      }).sort((a, b) => b.rawAmount - a.rawAmount); // Sort by debtBalance in descending order
+      }).sort((a, b) => b.rawAmount - a.rawAmount);
 
       const toiletPaperDebtsData = toiletPaperDebts.map((debt) => {
         const client = clients.find((c) => c.name === debt.client);
@@ -359,9 +353,9 @@ const DebtsReport = ({ dateFilter }) => {
           client: client?.name || debt.client || "-",
           debtBalance: (parseFloat(debt.amount) || 0).toLocaleString(),
           updatedAt: debt.updatedAt ? format(debt.updatedAt.toDate ? debt.updatedAt.toDate() : new Date(debt.updatedAt), "MMM dd, yyyy") : "-",
-          rawAmount: parseFloat(debt.amount) || 0, // Store raw amount for sorting
+          rawAmount: parseFloat(debt.amount) || 0,
         };
-      }).sort((a, b) => b.rawAmount - a.rawAmount); // Sort by debtBalance in descending order
+      }).sort((a, b) => b.rawAmount - a.rawAmount);
 
       const strawPaidTodayData = strawDebtsPaidToday.map((debt) => {
         const client = clients.find((c) => c.name === debt.client);
@@ -558,6 +552,10 @@ const DebtsReport = ({ dateFilter }) => {
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    generateDebtsReport,
+  }));
+
   if (loading) {
     return (
       <div className="text-center py-12 text-slate-600">
@@ -581,20 +579,6 @@ const DebtsReport = ({ dateFilter }) => {
       </div>
     );
   }
-
-  // Calculate totals for display
-  const strawDebts = filteredDebts.filter(debt => {
-    const product = products.find(p => p.id === debt.productId);
-    return product?.name === 'Straws';
-  });
-
-  const toiletPaperDebts = filteredDebts.filter(debt => {
-    const product = products.find(p => p.id === debt.productId);
-    return product?.name === 'Toilet Paper';
-  });
-
-  const strawTotal = strawDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
-  const toiletPaperTotal = toiletPaperDebts.reduce((sum, debt) => sum + (parseFloat(debt.amount) || 0), 0);
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
@@ -650,4 +634,4 @@ const DebtsReport = ({ dateFilter }) => {
   );
 };
 
-export default DebtsReport;
+export default forwardRef(DebtsReport);
